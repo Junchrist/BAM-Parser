@@ -1,10 +1,15 @@
-fix this Clear-Host
+$ErrorActionPreference = "SilentlyContinue"
+
+Clear-Host
+
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
 
 Write-Host ""
 Write-Host @"
     ▄████████ ███    █▄   ▄████████    ▄█    █▄       ▄████████    ▄████████  ▄█     ▄████████     ███     
   ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███    ███    ███ ▀█████████▄ 
-  ███    █▀  ███    ███ ███    █▀    ███    ███     ███    ███   ███    ███ ███▌   ███    █▀     ▀███▀▀██ 
+  ███    ▀  ███    ███ ███    █▀    ███    ███     ███    ███   ███    ███ ███▌   ███    █▀     ▀███▀▀██ 
  ▄███▄▄▄     ███    ███ ███         ▄███▄▄▄▄███▄▄   ███    ███  ▄███▄▄▄▄██▀ ███▌   ███            ███   ▀ 
 ▀▀███▀▀▀     ███    ███ ███        ▀▀███▀▀▀▀███▀  ▀███████████ ▀▀███▀▀▀▀▀   ███▌ ▀███████████     ███     
   ███    █▄  ███    ███ ███    █▄    ███    ███     ███    ███ ▀███████████ ███           ███     ███     
@@ -17,59 +22,20 @@ Write-Host ""
 Write-Host "                                 Made by @junchrist on Discord" -ForegroundColor White
 Write-Host ""
 
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {  
-    Write-Warning "This script requires Administrator privileges. Please run as Administrator."
-    exit
-}
-
-function Get-OldestConnectTime {
-    $oldestLogon = Get-CimInstance -ClassName Win32_LogonSession | 
-        Where-Object {$_.LogonType -eq 2 -or $_.LogonType -eq 10} | 
-        Sort-Object -Property StartTime | 
-        Select-Object -First 1
-    if ($oldestLogon) {
-        return $oldestLogon.StartTime
-    } else {
-        return $null
-    }
-}
-
-function Get-DeviceMappings {
-    $DynAssembly = New-Object System.Reflection.AssemblyName('SysUtils')
-    $AssemblyBuilder = [AppDomain]::CurrentDomain.DefineDynamicAssembly($DynAssembly, [Reflection.Emit.AssemblyBuilderAccess]::Run)
-    $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('SysUtils', $False)
-    $TypeBuilder = $ModuleBuilder.DefineType('Kernel32', 'Public, Class')
-    $PInvokeMethod = $TypeBuilder.DefinePInvokeMethod('QueryDosDevice', 'kernel32.dll', ([Reflection.MethodAttributes]::Public -bor [Reflection.MethodAttributes]::Static), [Reflection.CallingConventions]::Standard, [UInt32], [Type[]]@([String], [Text.StringBuilder], [UInt32]), [Runtime.InteropServices.CallingConvention]::Winapi, [Runtime.InteropServices.CharSet]::Auto)
-    $DllImportConstructor = [Runtime.InteropServices.DllImportAttribute].GetConstructor(@([String]))
-    $SetLastError = [Runtime.InteropServices.DllImportAttribute].GetField('SetLastError')
-    $SetLastErrorCustomAttribute = New-Object Reflection.Emit.CustomAttributeBuilder($DllImportConstructor, @('kernel32.dll'), [Reflection.FieldInfo[]]@($SetLastError), @($true))
-    $PInvokeMethod.SetCustomAttribute($SetLastErrorCustomAttribute)
-    $Kernel32 = $TypeBuilder.CreateType()
-    $Max = 65536
-    $StringBuilder = New-Object System.Text.StringBuilder($Max)
-    $driveMappings = Get-WmiObject Win32_Volume | Where-Object { $_.DriveLetter } | ForEach-Object {
-        $ReturnLength = $Kernel32::QueryDosDevice($_.DriveLetter, $StringBuilder, $Max)
-        if ($ReturnLength) {
-            @{
-                DriveLetter = $_.DriveLetter
-                DevicePath = $StringBuilder.ToString().ToLower()
-            }
-        }
-    }
-    return $driveMappings
-}
-
-function Convert-DevicePathToDriveLetter {
-    param (
-        [string]$DevicePath,
-        $DeviceMappings
+function Test-Admin {
+    $currentUser = New-Object Security.Principal.WindowsPrincipal(
+        [Security.Principal.WindowsIdentity]::GetCurrent()
     )
-    foreach ($mapping in $DeviceMappings) {
-        if ($DevicePath -like ($mapping.DevicePath + "*")) {
-            return $DevicePath -replace [regex]::Escape($mapping.DevicePath), $mapping.DriveLetter
-        }
-    }
-    return $DevicePath
+
+    return $currentUser.IsInRole(
+        [Security.Principal.WindowsBuiltinRole]::Administrator
+    )
+}
+
+if (-not (Test-Admin)) {
+    Write-Warning "This script requires Administrator privileges. Please run as Administrator."
+    Read-Host "Press Enter to exit"
+    exit
 }
 
 function Get-Signature {
@@ -78,328 +44,1146 @@ function Get-Signature {
         [string]$FilePath
     )
 
-    $ErrorActionPreference = "SilentlyContinue"
-    
-    if (Test-Path -PathType "Leaf" -Path $FilePath) {
-        $Authenticode = (Get-AuthenticodeSignature -FilePath $FilePath -ErrorAction SilentlyContinue).Status
-        
-        switch ($Authenticode) {
-            "Valid" { return "Verified" }
-            "NotSigned" { return "Unsigned" }
-            "HashMismatch" { return "Invalid Signature (HashMismatch)" }
-            "NotTrusted" { return "Invalid Signature (NotTrusted)" }
-            default { return "Unsigned" }
-        }
-    } else {
-        return "Deleted"
+    if ([string]::IsNullOrWhiteSpace($FilePath)) {
+        return "File Was Not Found"
     }
+
+    if (-not (Test-Path -LiteralPath $FilePath -PathType Leaf)) {
+        return "File Was Not Found"
+    }
+
+    try {
+        $Authenticode = (
+            Get-AuthenticodeSignature `
+                -FilePath $FilePath `
+                -ErrorAction SilentlyContinue
+        ).Status
+    }
+    catch {
+        return "Invalid Signature (UnknownError)"
+    }
+
+    switch ($Authenticode) {
+        "Valid" {
+            return "Valid Signature"
+        }
+
+        "NotSigned" {
+            return "Invalid Signature (NotSigned)"
+        }
+
+        "HashMismatch" {
+            return "Invalid Signature (HashMismatch)"
+        }
+
+        "NotTrusted" {
+            return "Invalid Signature (NotTrusted)"
+        }
+
+        "UnknownError" {
+            return "Invalid Signature (UnknownError)"
+        }
+
+        default {
+            return "Invalid Signature (UnknownError)"
+        }
+    }
+}
+
+function Get-DeviceMappings {
+
+    $DynAssembly = New-Object System.Reflection.AssemblyName('BamDeviceMapping')
+
+    $AssemblyBuilder = [AppDomain]::CurrentDomain.DefineDynamicAssembly(
+        $DynAssembly,
+        [Reflection.Emit.AssemblyBuilderAccess]::Run
+    )
+
+    $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule(
+        'BamDeviceMapping',
+        $False
+    )
+
+    $TypeBuilder = $ModuleBuilder.DefineType(
+        'Kernel32',
+        'Public, Class'
+    )
+
+    $PInvokeMethod = $TypeBuilder.DefinePInvokeMethod(
+        'QueryDosDevice',
+        'kernel32.dll',
+        ([Reflection.MethodAttributes]::Public -bor
+         [Reflection.MethodAttributes]::Static),
+        [Reflection.CallingConventions]::Standard,
+        [UInt32],
+        [Type[]]@(
+            [String],
+            [Text.StringBuilder],
+            [UInt32]
+        ),
+        [Runtime.InteropServices.CallingConvention]::Winapi,
+        [Runtime.InteropServices.CharSet]::Auto
+    )
+
+    $DllImportConstructor =
+        [Runtime.InteropServices.DllImportAttribute].GetConstructor(
+            @([String])
+        )
+
+    $SetLastError =
+        [Runtime.InteropServices.DllImportAttribute].GetField(
+            'SetLastError'
+        )
+
+    $CustomAttribute =
+        New-Object Reflection.Emit.CustomAttributeBuilder(
+            $DllImportConstructor,
+            @('kernel32.dll'),
+            [Reflection.FieldInfo[]]@($SetLastError),
+            @($true)
+        )
+
+    $PInvokeMethod.SetCustomAttribute($CustomAttribute)
+
+    $Kernel32 = $TypeBuilder.CreateType()
+
+    $Mappings = @()
+
+    $Volumes = Get-CimInstance Win32_Volume |
+        Where-Object {
+            $_.DriveLetter
+        }
+
+    foreach ($Volume in $Volumes) {
+
+        $StringBuilder = New-Object System.Text.StringBuilder(65536)
+
+        $ReturnLength = $Kernel32::QueryDosDevice(
+            $Volume.DriveLetter,
+            $StringBuilder,
+            65536
+        )
+
+        if ($ReturnLength) {
+
+            $Mappings += [PSCustomObject]@{
+                DriveLetter = $Volume.DriveLetter
+                DevicePath  = $StringBuilder.ToString().ToLower()
+            }
+        }
+    }
+
+    return $Mappings
+}
+
+function Convert-DevicePathToDriveLetter {
+    param (
+        [string]$DevicePath,
+        $DeviceMappings
+    )
+
+    if ([string]::IsNullOrWhiteSpace($DevicePath)) {
+        return $DevicePath
+    }
+
+    foreach ($Mapping in $DeviceMappings) {
+
+        if ($DevicePath.ToLower().StartsWith(
+            $Mapping.DevicePath.ToLower()
+        )) {
+
+            return $DevicePath -replace `
+                [regex]::Escape($Mapping.DevicePath),
+                $Mapping.DriveLetter
+        }
+    }
+
+    return $DevicePath
+}
+
+function Get-OldestConnectTime {
+
+    $oldestLogon = Get-CimInstance `
+        -ClassName Win32_LogonSession `
+        -ErrorAction SilentlyContinue |
+        Where-Object {
+            $_.LogonType -eq 2 -or
+            $_.LogonType -eq 10
+        } |
+        Sort-Object StartTime |
+        Select-Object -First 1
+
+    if ($oldestLogon) {
+        return $oldestLogon.StartTime
+    }
+
+    return $null
 }
 
 $oldestConnectTime = Get-OldestConnectTime
 $deviceMappings = Get-DeviceMappings
 
-$ErrorActionPreference = 'SilentlyContinue'
+if (-not (Get-PSDrive -Name HKLM -PSProvider Registry)) {
 
-if (!(Get-PSDrive -Name HKLM -PSProvider Registry)){
-    Try{New-PSDrive -Name HKLM -PSProvider Registry -Root HKEY_LOCAL_MACHINE}
-    Catch{}
+    try {
+        New-PSDrive `
+            -Name HKLM `
+            -PSProvider Registry `
+            -Root HKEY_LOCAL_MACHINE |
+            Out-Null
+    }
+    catch {
+        Write-Warning "Unable to mount HKEY_LOCAL_MACHINE."
+        exit
+    }
 }
 
-$bv = ("bam", "bam\State")
+$bv = @(
+    "bam",
+    "bam\State"
+)
+
 $Users = @()
-foreach($ii in $bv){
-    $Users += Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$($ii)\UserSettings\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty PSChildName
+
+foreach ($ii in $bv) {
+
+    $Path =
+        "HKLM:\SYSTEM\CurrentControlSet\Services\$ii\UserSettings"
+
+    if (Test-Path $Path) {
+
+        $Users += Get-ChildItem `
+            -Path $Path `
+            -ErrorAction SilentlyContinue |
+            Select-Object -ExpandProperty PSChildName
+    }
 }
 
-if ($Users.Count -eq 0) {
+$Users = $Users |
+    Where-Object {
+        $_ -match '^S-\d-\d+-.+'
+    } |
+    Sort-Object -Unique
+
+if (-not $Users -or $Users.Count -eq 0) {
+
     Write-Host "No BAM data found." -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit
 }
 
-$rpath = @("HKLM:\SYSTEM\CurrentControlSet\Services\bam\","HKLM:\SYSTEM\CurrentControlSet\Services\bam\state\")
+$rpath = @(
+    "HKLM:\SYSTEM\CurrentControlSet\Services\bam\",
+    "HKLM:\SYSTEM\CurrentControlSet\Services\bam\state\"
+)
 
-$UserTime = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).TimeZoneKeyName
-$UserBias = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).ActiveTimeBias
-$UserDay = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).DaylightBias
+$UserTime = (
+    Get-ItemProperty `
+        -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation"
+).TimeZoneKeyName
+
+$UserBias = (
+    Get-ItemProperty `
+        -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation"
+).ActiveTimeBias
+
+$UserDay = (
+    Get-ItemProperty `
+        -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation"
+).DaylightBias
 
 $Bam = @()
-Foreach ($Sid in $Users) {
-    foreach($rp in $rpath){
-        $BamItems = Get-Item -Path "$($rp)UserSettings\$Sid" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Property
-        
-        Try{
-            $objSID = New-Object System.Security.Principal.SecurityIdentifier($Sid)
-            $User = $objSID.Translate( [System.Security.Principal.NTAccount]) 
-            $User = $User.Value
+
+foreach ($Sid in $Users) {
+
+    try {
+
+        $objSID = New-Object `
+            System.Security.Principal.SecurityIdentifier($Sid)
+
+        $User = $objSID.Translate(
+            [System.Security.Principal.NTAccount]
+        )
+
+        $User = $User.Value
+    }
+    catch {
+
+        $User = ""
+    }
+
+    foreach ($rp in $rpath) {
+
+        $UserSettingsPath =
+            "$($rp)UserSettings\$Sid"
+
+        if (-not (Test-Path $UserSettingsPath)) {
+            continue
         }
-        Catch{$User=""}
-        
-        ForEach ($Item in $BamItems){
-            $Key = Get-ItemProperty -Path "$($rp)UserSettings\$Sid" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $Item
-    
-            If($key.length -eq 24){
-                $Hex=[System.BitConverter]::ToString($key[7..0]) -replace "-",""
-                $Bias = -([convert]::ToInt32([Convert]::ToString($UserBias,2),2))
-                $TimeUser = (Get-Date ([DateTime]::FromFileTimeUtc([Convert]::ToInt64($Hex, 16))).addminutes($Bias) -Format "yyyy-MM-dd HH:mm:ss") 
-                
-                if ([DateTime]::ParseExact($TimeUser, "yyyy-MM-dd HH:mm:ss", $null) -ge $oldestConnectTime) {
-                    $f = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
-                    {Split-path -leaf ($item).TrimStart()} else {$item}
-                    
-                    $path = Convert-DevicePathToDriveLetter -DevicePath $item -DeviceMappings $deviceMappings
-                    
-                    $signature = Get-Signature -FilePath $path
-                    
-                    $Bam += [PSCustomObject]@{
-                        'Last Execution User Time' = $TimeUser
-                        Path = $path
-                        'Digital Signature' = $signature
-                        'File Name' = $f
-                    }
+
+        $BamItems =
+            Get-Item `
+                -Path $UserSettingsPath `
+                -ErrorAction SilentlyContinue |
+                Select-Object -ExpandProperty Property
+
+        foreach ($Item in $BamItems) {
+
+            $Key =
+                Get-ItemProperty `
+                    -Path $UserSettingsPath `
+                    -ErrorAction SilentlyContinue |
+                    Select-Object -ExpandProperty $Item
+
+            if (-not $Key) {
+                continue
+            }
+
+            if ($Key.Length -ne 24) {
+                continue
+            }
+
+            try {
+
+                $Hex =
+                    [System.BitConverter]::ToString(
+                        $Key[7..0]
+                    ) -replace "-", ""
+
+                $FileTime =
+                    [Convert]::ToInt64(
+                        $Hex,
+                        16
+                    )
+
+                $TimeUtc =
+                    [DateTime]::FromFileTimeUtc(
+                        $FileTime
+                    )
+
+                $TimeUser =
+                    $TimeUtc.ToLocalTime()
+
+                if (
+                    $oldestConnectTime -and
+                    $TimeUser -lt $oldestConnectTime
+                ) {
+                    continue
                 }
+
+                $TimeLocalString =
+                    $TimeUser.ToString(
+                        "yyyy-MM-dd HH:mm:ss"
+                    )
+
+                $TimeUtcString =
+                    $TimeUtc.ToString(
+                        "yyyy-MM-dd HH:mm:ss"
+                    )
+
+                $Path =
+                    Convert-DevicePathToDriveLetter `
+                        -DevicePath $Item `
+                        -DeviceMappings $deviceMappings
+
+                $FileName =
+                    Split-Path `
+                        -Path $Path `
+                        -Leaf `
+                        -ErrorAction SilentlyContinue
+
+                if ([string]::IsNullOrWhiteSpace($FileName)) {
+                    $FileName = Split-Path `
+                        -Path $Item `
+                        -Leaf `
+                        -ErrorAction SilentlyContinue
+                }
+
+                $Signature = Get-Signature `
+                    -FilePath $Path
+
+                $Bam += [PSCustomObject]@{
+
+                    'Execution Time' =
+                        $TimeLocalString
+
+                    'Execution UTC' =
+                        $TimeUtcString
+
+                    'User Execution Time' =
+                        $TimeLocalString
+
+                    'File Path' =
+                        $Path
+
+                    'Signature Status' =
+                        $Signature
+
+                    'File Name' =
+                        $FileName
+
+                    'User' =
+                        $User
+
+                    'SID' =
+                        $Sid
+
+                    'Registry Path' =
+                        $UserSettingsPath
+                }
+            }
+            catch {
             }
         }
     }
 }
 
-$ErrorActionPreference = 'Continue'
+$Bam = @(
+    $Bam |
+        Sort-Object 'Execution Time' -Descending
+)
 
 if ($Bam.Count -eq 0) {
+
     Write-Host "No BAM entries found." -ForegroundColor Yellow
     Read-Host "Press Enter to exit"
     exit
 }
 
 function Show-CustomGUI {
-    Add-Type -AssemblyName System.Windows.Forms
-    Add-Type -AssemblyName System.Drawing
-    
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "BAM Forensic Analysis | Junchrist"
-    $form.Size = New-Object System.Drawing.Size(1200, 800)
-    $form.StartPosition = "CenterScreen"
-    $form.BackColor = [System.Drawing.Color]::Black
-    $form.ForeColor = [System.Drawing.Color]::White
-    $form.FormBorderStyle = "FixedSingle"
-    $form.MaximizeBox = $false
-    
-    $headerLabel = New-Object System.Windows.Forms.Label
-    $headerLabel.Text = "BAM Forensic Analysis"
-    $headerLabel.Font = New-Object System.Drawing.Font("Segoe UI", 20, [System.Drawing.FontStyle]::Bold)
-    $headerLabel.ForeColor = [System.Drawing.Color]::White
-    $headerLabel.Size = New-Object System.Drawing.Size(1100, 40)
-    $headerLabel.Location = New-Object System.Drawing.Point(50, 20)
-    $headerLabel.TextAlign = "MiddleCenter"
-    $form.Controls.Add($headerLabel)
-    
-    $subLabel = New-Object System.Windows.Forms.Label
-    $subLabel.Text = "Made by @junchrist on Discord"
-    $subLabel.Font = New-Object System.Drawing.Font("Segoe UI", 10)
-    $subLabel.ForeColor = [System.Drawing.Color]::Gray
-    $subLabel.Size = New-Object System.Drawing.Size(1100, 25)
-    $subLabel.Location = New-Object System.Drawing.Point(50, 65)
-    $subLabel.TextAlign = "MiddleCenter"
-    $form.Controls.Add($subLabel)
-    
-    $listView = New-Object System.Windows.Forms.ListView
-    $listView.Size = New-Object System.Drawing.Size(1100, 550)
-    $listView.Location = New-Object System.Drawing.Point(50, 100)
-    $listView.View = "Details"
-    $listView.FullRowSelect = $true
-    $listView.GridLines = $true
-    $listView.Font = New-Object System.Drawing.Font("Consolas", 10)
-    $listView.BackColor = [System.Drawing.Color]::FromArgb(10, 10, 15)
-    $listView.ForeColor = [System.Drawing.Color]::White
-    
-    $listView.Columns.Add("Execution Time", 200)
-    $listView.Columns.Add("File Path", 400)
-    $listView.Columns.Add("Digital Signature", 150)
-    $listView.Columns.Add("File Name", 300)
-    
-    $form.Controls.Add($listView)
-    
-    $statusBar = New-Object System.Windows.Forms.StatusStrip
-    $statusBar.BackColor = [System.Drawing.Color]::FromArgb(10, 10, 15)
-    $statusBar.ForeColor = [System.Drawing.Color]::White
-    
-    $totalCount = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $totalCount.Text = "Total: $($Bam.Count)"
-    $totalCount.ForeColor = [System.Drawing.Color]::White
-    $statusBar.Items.Add($totalCount)
-    
-    $verifiedCount = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $verifiedCount.Text = "Verified: $($Bam | Where-Object { $_.'Digital Signature' -eq 'Verified' } | Measure-Object | Select-Object -ExpandProperty Count)"
-    $verifiedCount.ForeColor = [System.Drawing.Color]::Green
-    $statusBar.Items.Add($verifiedCount)
-    
-    $suspiciousCount = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $suspiciousCount.Text = "Suspicious: $($Bam | Where-Object { $_.'Digital Signature' -eq 'Suspicious' } | Measure-Object | Select-Object -ExpandProperty Count)"
-    $suspiciousCount.ForeColor = [System.Drawing.Color]::Red
-    $statusBar.Items.Add($suspiciousCount)
-    
-    $unsignedCount = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $unsignedCount.Text = "Unsigned: $($Bam | Where-Object { $_.'Digital Signature' -eq 'Unsigned' } | Measure-Object | Select-Object -ExpandProperty Count)"
-    $unsignedCount.ForeColor = [System.Drawing.Color]::Yellow
-    $statusBar.Items.Add($unsignedCount)
-    
-    $deletedCount = New-Object System.Windows.Forms.ToolStripStatusLabel
-    $deletedCount.Text = "Deleted: $($Bam | Where-Object { $_.'Digital Signature' -eq 'Deleted' } | Measure-Object | Select-Object -ExpandProperty Count)"
-    $deletedCount.ForeColor = [System.Drawing.Color]::Gray
-    $statusBar.Items.Add($deletedCount)
-    
-    $form.Controls.Add($statusBar)
-    
-    foreach ($entry in $Bam) {
-        $item = New-Object System.Windows.Forms.ListViewItem($entry.'Last Execution User Time')
-        $item.SubItems.Add($entry.Path)
-        $item.SubItems.Add($entry.'Digital Signature')
-        $item.SubItems.Add($entry.'File Name')
-        
-        if ($entry.'Digital Signature' -eq 'Verified') {
-            $item.ForeColor = [System.Drawing.Color]::Green
-        } elseif ($entry.'Digital Signature' -eq 'Suspicious') {
-            $item.ForeColor = [System.Drawing.Color]::Red
-        } elseif ($entry.'Digital Signature' -eq 'Unsigned') {
-            $item.ForeColor = [System.Drawing.Color]::Yellow
-        } else {
-            $item.ForeColor = [System.Drawing.Color]::Gray
-        }
-        
-        $listView.Items.Add($item)
+
+    $Form = New-Object System.Windows.Forms.Form
+
+    $Form.Text =
+        "BAM Forensic Analysis | Junchrist"
+
+    $Form.StartPosition =
+        "CenterScreen"
+
+    $Form.Size =
+        New-Object System.Drawing.Size(1500, 900)
+
+    $Form.MinimumSize =
+        New-Object System.Drawing.Size(1100, 700)
+
+    $Form.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            10, 10, 15
+        )
+
+    $Form.ForeColor =
+        [System.Drawing.Color]::White
+
+    $Form.Font =
+        New-Object System.Drawing.Font(
+            "Segoe UI",
+            9
+        )
+
+    $Form.AutoScroll = $false
+
+    $HeaderPanel =
+        New-Object System.Windows.Forms.Panel
+
+    $HeaderPanel.Dock = "Top"
+    $HeaderPanel.Height = 145
+    $HeaderPanel.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            21, 21, 32
+        )
+
+    $Form.Controls.Add($HeaderPanel)
+
+    $TopLine =
+        New-Object System.Windows.Forms.Panel
+
+    $TopLine.Dock = "Top"
+    $TopLine.Height = 3
+    $TopLine.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            99, 102, 241
+        )
+
+    $HeaderPanel.Controls.Add($TopLine)
+
+    $Title =
+        New-Object System.Windows.Forms.Label
+
+    $Title.Text =
+        "BAM FORENSIC ANALYSIS"
+
+    $Title.Font =
+        New-Object System.Drawing.Font(
+            "Segoe UI",
+            22,
+            [System.Drawing.FontStyle]::Bold
+        )
+
+    $Title.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            139, 92, 246
+        )
+
+    $Title.AutoSize = $true
+    $Title.Location =
+        New-Object System.Drawing.Point(
+            30,
+            30
+        )
+
+    $HeaderPanel.Controls.Add($Title)
+
+    $Subtitle =
+        New-Object System.Windows.Forms.Label
+
+    $Subtitle.Text =
+        "Windows Background Activity Moderator execution analysis"
+
+    $Subtitle.Font =
+        New-Object System.Drawing.Font(
+            "Segoe UI",
+            10
+        )
+
+    $Subtitle.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            203, 213, 225
+        )
+
+    $Subtitle.AutoSize = $true
+    $Subtitle.Location =
+        New-Object System.Drawing.Point(
+            32,
+            75
+        )
+
+    $HeaderPanel.Controls.Add($Subtitle)
+
+    $Author =
+        New-Object System.Windows.Forms.Label
+
+    $Author.Text =
+        "Made by @junchrist on Discord"
+
+    $Author.Font =
+        New-Object System.Drawing.Font(
+            "Segoe UI",
+            9
+        )
+
+    $Author.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            100, 116, 139
+        )
+
+    $Author.AutoSize = $true
+    $Author.Location =
+        New-Object System.Drawing.Point(
+            32,
+            103
+        )
+
+    $HeaderPanel.Controls.Add($Author)
+
+    $StatsPanel =
+        New-Object System.Windows.Forms.Panel
+
+    $StatsPanel.Dock = "Top"
+    $StatsPanel.Height = 85
+
+    $StatsPanel.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            15, 15, 23
+        )
+
+    $Form.Controls.Add($StatsPanel)
+
+    function Add-Stat {
+        param (
+            [string]$Text,
+            [string]$LabelText,
+            [int]$X,
+            [System.Drawing.Color]$TextColor
+        )
+
+        $Value =
+            New-Object System.Windows.Forms.Label
+
+        $Value.Text = $Text
+
+        $Value.Font =
+            New-Object System.Drawing.Font(
+                "Consolas",
+                18,
+                [System.Drawing.FontStyle]::Bold
+            )
+
+        $Value.ForeColor = $TextColor
+        $Value.AutoSize = $true
+
+        $Value.Location =
+            New-Object System.Drawing.Point(
+                $X,
+                10
+            )
+
+        $StatsPanel.Controls.Add($Value)
+
+        $Label =
+            New-Object System.Windows.Forms.Label
+
+        $Label.Text = $LabelText
+
+        $Label.Font =
+            New-Object System.Drawing.Font(
+                "Segoe UI",
+                8
+            )
+
+        $Label.ForeColor =
+            [System.Drawing.Color]::FromArgb(
+                100, 116, 139
+            )
+
+        $Label.AutoSize = $true
+
+        $Label.Location =
+            New-Object System.Drawing.Point(
+                $X,
+                42
+            )
+
+        $StatsPanel.Controls.Add($Label)
     }
-    
-    $form.ShowDialog() | Out-Null
-}
 
-Show-CustomGUI i want it like $ErrorActionPreference = "SilentlyContinue"
+    $Total =
+        @($Bam).Count
 
-function Get-Signature {
+    $Valid =
+        @(
+            $Bam |
+                Where-Object {
+                    $_.'Signature Status' -eq
+                    "Valid Signature"
+                }
+        ).Count
 
-    [CmdletBinding()]
-     param (
-        [string[]]$FilePath
+    $NotSigned =
+        @(
+            $Bam |
+                Where-Object {
+                    $_.'Signature Status' -eq
+                    "Invalid Signature (NotSigned)"
+                }
+        ).Count
+
+    $Invalid =
+        @(
+            $Bam |
+                Where-Object {
+                    $_.'Signature Status' -match
+                    "HashMismatch|NotTrusted"
+                }
+        ).Count
+
+    $Missing =
+        @(
+            $Bam |
+                Where-Object {
+                    $_.'Signature Status' -eq
+                    "File Was Not Found"
+                }
+        ).Count
+
+    Add-Stat `
+        -Text $Total `
+        -LabelText "TOTAL ENTRIES" `
+        -X 35 `
+        -TextColor ([System.Drawing.Color]::FromArgb(
+            139, 92, 246
+        ))
+
+    Add-Stat `
+        -Text $Valid `
+        -LabelText "VALID" `
+        -X 190 `
+        -TextColor ([System.Drawing.Color]::FromArgb(
+            16, 185, 129
+        ))
+
+    Add-Stat `
+        -Text $NotSigned `
+        -LabelText "NOT SIGNED" `
+        -X 320 `
+        -TextColor ([System.Drawing.Color]::FromArgb(
+            245, 158, 11
+        ))
+
+    Add-Stat `
+        -Text $Invalid `
+        -LabelText "INVALID" `
+        -X 480 `
+        -TextColor ([System.Drawing.Color]::FromArgb(
+            239, 68, 68
+        ))
+
+    Add-Stat `
+        -Text $Missing `
+        -LabelText "FILE NOT FOUND" `
+        -X 620 `
+        -TextColor ([System.Drawing.Color]::FromArgb(
+            100, 116, 139
+        ))
+
+    $ControlPanel =
+        New-Object System.Windows.Forms.Panel
+
+    $ControlPanel.Dock = "Top"
+    $ControlPanel.Height = 70
+
+    $ControlPanel.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            21, 21, 32
+        )
+
+    $Form.Controls.Add($ControlPanel)
+
+    $Search =
+        New-Object System.Windows.Forms.TextBox
+
+    $Search.Font =
+        New-Object System.Drawing.Font(
+            "Segoe UI",
+            10
+        )
+
+    $Search.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            248, 250, 252
+        )
+
+    $Search.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            10, 10, 15
+        )
+
+    $Search.BorderStyle = "FixedSingle"
+
+    $Search.Location =
+        New-Object System.Drawing.Point(
+            30,
+            18
+        )
+
+    $Search.Size =
+        New-Object System.Drawing.Size(
+            600,
+            32
+        )
+
+    $Search.Text =
+        "Search files, paths, timestamps, or signatures..."
+
+    $Search.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            100, 116, 139
+        )
+
+    $ControlPanel.Controls.Add($Search)
+
+    $Search.Add_GotFocus({
+
+        if (
+            $Search.Text -eq
+            "Search files, paths, timestamps, or signatures..."
+        ) {
+
+            $Search.Text = ""
+
+            $Search.ForeColor =
+                [System.Drawing.Color]::White
+        }
+    })
+
+    $Search.Add_LostFocus({
+
+        if ([string]::IsNullOrWhiteSpace($Search.Text)) {
+
+            $Search.Text =
+                "Search files, paths, timestamps, or signatures..."
+
+            $Search.ForeColor =
+                [System.Drawing.Color]::FromArgb(
+                    100, 116, 139
+                )
+        }
+    })
+
+    $TablePanel =
+        New-Object System.Windows.Forms.Panel
+
+    $TablePanel.Dock = "Fill"
+
+    $TablePanel.Padding =
+        New-Object System.Windows.Forms.Padding(
+            30, 20, 30, 20
+        )
+
+    $TablePanel.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            10, 10, 15
+        )
+
+    $Form.Controls.Add($TablePanel)
+
+    $ListView =
+        New-Object System.Windows.Forms.ListView
+
+    $ListView.Dock = "Fill"
+
+    $ListView.View = "Details"
+
+    $ListView.FullRowSelect = $true
+
+    $ListView.GridLines = $false
+
+    $ListView.HideSelection = $false
+
+    $ListView.MultiSelect = $false
+
+    $ListView.OwnerDraw = $true
+
+    $ListView.Font =
+        New-Object System.Drawing.Font(
+            "Consolas",
+            9
+        )
+
+    $ListView.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            21, 21, 32
+        )
+
+    $ListView.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            248, 250, 252
+        )
+
+    [void]$ListView.Columns.Add(
+        "Execution Time",
+        170
     )
 
-    $Existence = Test-Path -PathType "Leaf" -Path $FilePath
-    $Authenticode = (Get-AuthenticodeSignature -FilePath $FilePath -ErrorAction SilentlyContinue).Status
-    $Signature = "Invalid Signature (UnknownError)"
+    [void]$ListView.Columns.Add(
+        "File Path",
+        500
+    )
 
-    if ($Existence) {
-        if ($Authenticode -eq "Valid") {
-            $Signature = "Valid Signature"
+    [void]$ListView.Columns.Add(
+        "Signature Status",
+        250
+    )
+
+    [void]$ListView.Columns.Add(
+        "File Name",
+        260
+    )
+
+    $TablePanel.Controls.Add($ListView)
+
+    $ListView.Add_DrawColumnHeader({
+
+        param($Sender, $Event)
+
+        $Event.Graphics.FillRectangle(
+            (New-Object System.Drawing.SolidBrush(
+                [System.Drawing.Color]::FromArgb(
+                    30, 30, 46
+                )
+            )),
+            $Event.Bounds
+        )
+
+        $Event.Graphics.DrawString(
+            $Event.Header.Text,
+            (New-Object System.Drawing.Font(
+                "Segoe UI",
+                8,
+                [System.Drawing.FontStyle]::Bold
+            )),
+            (New-Object System.Drawing.SolidBrush(
+                [System.Drawing.Color]::FromArgb(
+                    139, 92, 246
+                )
+            )),
+            $Event.Bounds.X + 10,
+            $Event.Bounds.Y + 10
+        )
+    })
+
+    $ListView.Add_DrawItem({
+
+        param($Sender, $Event)
+
+        if ($Event.ItemIndex % 2 -eq 0) {
+
+            $Event.Graphics.FillRectangle(
+                (New-Object System.Drawing.SolidBrush(
+                    [System.Drawing.Color]::FromArgb(
+                        21, 21, 32
+                    )
+                )),
+                $Event.Bounds
+            )
         }
-        elseif ($Authenticode -eq "NotSigned") {
-            $Signature = "Invalid Signature (NotSigned)"
+        else {
+
+            $Event.Graphics.FillRectangle(
+                (New-Object System.Drawing.SolidBrush(
+                    [System.Drawing.Color]::FromArgb(
+                        18, 18, 28
+                    )
+                )),
+                $Event.Bounds
+            )
         }
-        elseif ($Authenticode -eq "HashMismatch") {
-            $Signature = "Invalid Signature (HashMismatch)"
+
+        if ($Event.Item.Selected) {
+
+            $Event.Graphics.FillRectangle(
+                (New-Object System.Drawing.SolidBrush(
+                    [System.Drawing.Color]::FromArgb(
+                        45, 38, 75
+                    )
+                )),
+                $Event.Bounds
+            )
         }
-        elseif ($Authenticode -eq "NotTrusted") {
-            $Signature = "Invalid Signature (NotTrusted)"
-        }
-        elseif ($Authenticode -eq "UnknownError") {
-            $Signature = "Invalid Signature (UnknownError)"
-        }
-        return $Signature
-    } else {
-        $Signature = "File Was Not Found"
-        return $Signature
-    }
-}
+    })
 
-Clear-Host
+    $ListView.Add_DrawSubItem({
 
-Write-Host "";
-Write-Host "";
-Write-Host -ForegroundColor Red "   ██████╗ ███████╗██████╗     ██╗      ██████╗ ████████╗██╗   ██╗███████╗    ██████╗  █████╗ ███╗   ███╗";
-Write-Host -ForegroundColor Red "   ██╔══██╗██╔════╝██╔══██╗    ██║     ██╔═══██╗╚══██╔══╝██║   ██║██╔════╝    ██╔══██╗██╔══██╗████╗ ████║";
-Write-Host -ForegroundColor Red "   ██████╔╝█████╗  ██║  ██║    ██║     ██║   ██║   ██║   ██║   ██║███████╗    ██████╔╝███████║██╔████╔██║";
-Write-Host -ForegroundColor Red "   ██╔══██╗██╔══╝  ██║  ██║    ██║     ██║   ██║   ██║   ██║   ██║╚════██║    ██╔══██╗██╔══██║██║╚██╔╝██║";
-Write-Host -ForegroundColor Red "   ██║  ██║███████╗██████╔╝    ███████╗╚██████╔╝   ██║   ╚██████╔╝███████║    ██████╔╝██║  ██║██║ ╚═╝ ██║";
-Write-Host -ForegroundColor Red "   ╚═╝  ╚═╝╚══════╝╚═════╝     ╚══════╝ ╚═════╝    ╚═╝    ╚═════╝ ╚══════╝    ╚═════╝ ╚═╝  ╚═╝╚═╝     ╚═╝";
-Write-Host "";
-Write-Host -ForegroundColor Blue "   Made By PureIntent (Shitty ScreenSharer) For Red Lotus ScreenSharing and DFIR - " -NoNewLine
-Write-Host -ForegroundColor Red "discord.gg/redlotus";
-Write-Host "";
+        param($Sender, $Event)
 
-function Test-Admin {;$currentUser = New-Object Security.Principal.WindowsPrincipal $([Security.Principal.WindowsIdentity]::GetCurrent());$currentUser.IsInRole([Security.Principal.WindowsBuiltinRole]::Administrator);}
-if (!(Test-Admin)) {
-    Write-Warning "Please Run This Script as Admin."
-    Start-Sleep 10
-    Exit
-}
+        $TextColor =
+            [System.Drawing.Color]::FromArgb(
+                203, 213, 225
+            )
 
-$sw = [Diagnostics.Stopwatch]::StartNew()
+        if ($Event.ColumnIndex -eq 2) {
 
-if (!(Get-PSDrive -Name HKLM -PSProvider Registry)){
-    Try{New-PSDrive -Name HKLM -PSProvider Registry -Root HKEY_LOCAL_MACHINE}
-    Catch{Write-Warning "Error Mounting HKEY_Local_Machine"}
-}
-$bv = ("bam", "bam\State")
-Try{$Users = foreach($ii in $bv){Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$($ii)\UserSettings\" | Select-Object -ExpandProperty PSChildName}}
-Catch{
-    Write-Warning "Error Parsing BAM Key. Likely unsupported Windows Version"
-    Exit
-}
-$rpath = @("HKLM:\SYSTEM\CurrentControlSet\Services\bam\","HKLM:\SYSTEM\CurrentControlSet\Services\bam\state\")
+            switch -Regex ($Event.SubItem.Text) {
 
-$UserTime = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation").TimeZoneKeyName
-$UserBias = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation").ActiveTimeBias
-$UserDay = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation").DaylightBias
+                "^Valid Signature$" {
+                    $TextColor =
+                        [System.Drawing.Color]::FromArgb(
+                            16, 185, 129
+                        )
+                }
 
-$Bam = Foreach ($Sid in $Users){$u++
-            
-        foreach($rp in $rpath){
-           $BamItems = Get-Item -Path "$($rp)UserSettings\$Sid" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Property
-           Write-Host -ForegroundColor Red "Extracting " -NoNewLine
-           Write-Host -ForegroundColor Blue "$($rp)UserSettings\$SID"
-           $bi = 0 
+                "NotSigned" {
+                    $TextColor =
+                        [System.Drawing.Color]::FromArgb(
+                            245, 158, 11
+                        )
+                }
 
-            Try{
-            $objSID = New-Object System.Security.Principal.SecurityIdentifier($Sid)
-            $User = $objSID.Translate( [System.Security.Principal.NTAccount]) 
-            $User = $User.Value
+                "HashMismatch|NotTrusted" {
+                    $TextColor =
+                        [System.Drawing.Color]::FromArgb(
+                            239, 68, 68
+                        )
+                }
+
+                "UnknownError" {
+                    $TextColor =
+                        [System.Drawing.Color]::FromArgb(
+                            245, 158, 11
+                        )
+                }
+
+                "File Was Not Found" {
+                    $TextColor =
+                        [System.Drawing.Color]::FromArgb(
+                            100, 116, 139
+                        )
+                }
             }
-            Catch{$User=""}
-            $i=0
-            ForEach ($Item in $BamItems){$i++
-		    $Key = Get-ItemProperty -Path "$($rp)UserSettings\$Sid" -ErrorAction SilentlyContinue| Select-Object -ExpandProperty $Item
-	
-            If($key.length -eq 24){
-                $Hex=[System.BitConverter]::ToString($key[7..0]) -replace "-",""
-                $TimeLocal = Get-Date ([DateTime]::FromFileTime([Convert]::ToInt64($Hex, 16))) -Format "yyyy-MM-dd HH:mm:ss"
-			    $TimeUTC = Get-Date ([DateTime]::FromFileTimeUtc([Convert]::ToInt64($Hex, 16))) -Format "yyyy-MM-dd HH:mm:ss"
-			    $Bias = -([convert]::ToInt32([Convert]::ToString($UserBias,2),2))
-			    $Day = -([convert]::ToInt32([Convert]::ToString($UserDay,2),2)) 
-			    $Biasd = $Bias/60
-			    $Dayd = $Day/60
-			    $TImeUser = (Get-Date ([DateTime]::FromFileTimeUtc([Convert]::ToInt64($Hex, 16))).addminutes($Bias) -Format "yyyy-MM-dd HH:mm:ss") 
-			    $d = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
-			    {((split-path -path $item).Remove(23)).trimstart("\Device\HarddiskVolume")} else {$d = ""}
-			    $f = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
-			    {Split-path -leaf ($item).TrimStart()} else {$item}	
-			    $cp = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
-			    {($item).Remove(1,23)} else {$cp = ""}
-			    $path = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
-			    {Join-Path -Path "C:" -ChildPath $cp} else {$path = ""}			
-			    $sig = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
-			    {Get-Signature -FilePath $path} else {$sig = ""}				
-                [PSCustomObject]@{
-                            'Examiner Time' = $TimeLocal
-						    'Last Execution Time (UTC)'= $TimeUTC
-						    'Last Execution User Time' = $TimeUser
-						     Application = 	$f
-						     Path =  		$path
-                             Signature =          $Sig
-						     User =         $User
-						     SID =          $Sid
-                             Regpath =        $rp
-                             }}}}}
+        }
 
-$Bam | Out-GridView -PassThru -Title "BAM key entries $($Bam.count)  - User TimeZone: ($UserTime) -> ActiveBias: ( $Bias) - DayLightTime: ($Day)"
+        $Event.Graphics.DrawString(
+            $Event.SubItem.Text,
+            $ListView.Font,
+            (New-Object System.Drawing.SolidBrush(
+                $TextColor
+            )),
+            $Event.Bounds.X + 10,
+            $Event.Bounds.Y + 8
+        )
+    })
 
-$sw.stop()
-$t = $sw.Elapsed.TotalMinutes
-Write-Host ""
-Write-Host "Elapsed Time $t Minutes" -ForegroundColor Yellow the ui
+    foreach ($Entry in $Bam) {
+
+        $Item =
+            New-Object System.Windows.Forms.ListViewItem(
+                [string]$Entry.'Execution Time'
+            )
+
+        [void]$Item.SubItems.Add(
+            [string]$Entry.'File Path'
+        )
+
+        [void]$Item.SubItems.Add(
+            [string]$Entry.'Signature Status'
+        )
+
+        [void]$Item.SubItems.Add(
+            [string]$Entry.'File Name'
+        )
+
+        $Item.Tag = $Entry
+
+        [void]$ListView.Items.Add($Item)
+    }
+
+    $Search.Add_TextChanged({
+
+        if (
+            $Search.Text -eq
+            "Search files, paths, timestamps, or signatures..."
+        ) {
+            return
+        }
+
+        $Query =
+            $Search.Text.Trim().ToLower()
+
+        $ListView.BeginUpdate()
+
+        $ListView.Items.Clear()
+
+        foreach ($Entry in $Bam) {
+
+            $SearchText = @(
+                $Entry.'Execution Time'
+                $Entry.'Execution UTC'
+                $Entry.'User Execution Time'
+                $Entry.'File Path'
+                $Entry.'Signature Status'
+                $Entry.'File Name'
+                $Entry.User
+                $Entry.SID
+            ) -join " "
+
+            if (
+                [string]::IsNullOrWhiteSpace($Query) -or
+                $SearchText.ToLower().Contains($Query)
+            ) {
+
+                $Item =
+                    New-Object System.Windows.Forms.ListViewItem(
+                        [string]$Entry.'Execution Time'
+                    )
+
+                [void]$Item.SubItems.Add(
+                    [string]$Entry.'File Path'
+                )
+
+                [void]$Item.SubItems.Add(
+                    [string]$Entry.'Signature Status'
+                )
+
+                [void]$Item.SubItems.Add(
+                    [string]$Entry.'File Name'
+                )
+
+                $Item.Tag = $Entry
+
+                [void]$ListView.Items.Add($Item)
+            }
+        }
+
+        $ListView.EndUpdate()
+    })
+
+    $ListView.Add_DoubleClick({
+
+        if ($ListView.SelectedItems.Count -eq 0) {
+            return
+        }
+
+        $Entry =
+            $ListView.SelectedItems[0].Tag
+
+        $Details = @"
+Execution Time:
+$($Entry.'Execution Time')
+
+Execution UTC:
+$($Entry.'Execution UTC')
+
+User Execution Time:
+$($Entry.'User Execution Time')
+
+File Name:
+$($Entry.'File Name')
+
+File Path:
+$($Entry.'File Path')
+
+Signature Status:
+$($Entry.'Signature Status')
+
+User:
+$($Entry.User)
+
+SID:
+$($Entry.SID)
+
+Registry Path:
+$($Entry.'Registry Path')
+"@
+
+        [System.Windows.Forms.MessageBox]::Show(
+            $Details,
+            "BAM Entry Details",
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Information
+        ) | Out-Null
+    })
+
+    $Footer =
+        New-Object System.Windows.Forms.Label
+
+    $Footer.Text =
+        "BAM Forensic Analysis  •  TimeZone: $UserTime  •  Entries: $Total"
+
+    $Footer.Dock = "Bottom"
+
+    $Footer.Height = 28
+
+    $Footer.TextAlign =
+        [System.Drawing.ContentAlignment]::MiddleCenter
+
+    $Footer.Font =
+        New-Object System.Drawing.Font(
+            "Segoe UI",
+            8
+        )
+
+    $Footer.ForeColor =
+        [System.Drawing.Color]::FromArgb(
+            100, 116, 139
+        )
+
+    $Footer.BackColor =
+        [System.Drawing.Color]::FromArgb(
+            21, 21, 32
+        )
+
+    $Form.Controls.Add($Footer)
+
+    [void]$Form.ShowDialog()
+}
+
+Show-CustomGUI
