@@ -229,7 +229,7 @@ $XAML = @"
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10" HorizontalAlignment="Center">
-            <TextBlock FontSize="12" Foreground="#888888" TextAlignment="Center" FontFamily="Consolas">
+            <TextBlock FontSize="12" Foreground="#888888" TextAlignment="Center" FontFamily="Consolas" xml:space="preserve">
                         d8b                           d8,                
                         ?88                          `8P            d8P  
                          88b                                     d888888P
@@ -294,19 +294,29 @@ d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P
         <ListBox Grid.Row="3" x:Name="DataList" Margin="0,0,0,10">
             <ListBox.ItemTemplate>
                 <DataTemplate>
-                    <Grid x:Name="ItemGrid">
+                    <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="180"/>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="150"/>
                             <ColumnDefinition Width="180"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock x:Name="TimeBlock" Grid.Column="0" Foreground="#FFFFFF" FontSize="12" Text="{Binding Time}"/>
-                        <TextBlock x:Name="PathBlock" Grid.Column="1" Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Text="{Binding Path}"/>
-                        <Border x:Name="SigBorder" Grid.Column="2" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,2" HorizontalAlignment="Left">
-                            <TextBlock x:Name="SigBlock" FontSize="10" FontWeight="Bold" TextAlignment="Center" Text="{Binding Signature}"/>
+                        <TextBlock Grid.Column="0" Foreground="#FFFFFF" FontSize="12" Text="{Binding Time}"/>
+                        <TextBlock Grid.Column="1" Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Text="{Binding Path}"/>
+                        <Border Grid.Column="2" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,2" HorizontalAlignment="Left">
+                            <Border.Background>
+                                <SolidColorBrush Color="{Binding SigBg}"/>
+                            </Border.Background>
+                            <Border.BorderBrush>
+                                <SolidColorBrush Color="{Binding SigBorder}"/>
+                            </Border.BorderBrush>
+                            <TextBlock FontSize="10" FontWeight="Bold" TextAlignment="Center" Text="{Binding Signature}">
+                                <TextBlock.Foreground>
+                                    <SolidColorBrush Color="{Binding SigColor}"/>
+                                </TextBlock.Foreground>
+                            </TextBlock>
                         </Border>
-                        <TextBlock x:Name="FileBlock" Grid.Column="3" Foreground="#CCCCCC" FontSize="12" FontWeight="Bold" Text="{Binding FileName}"/>
+                        <TextBlock Grid.Column="3" Foreground="#CCCCCC" FontSize="12" FontWeight="Bold" Text="{Binding FileName}"/>
                     </Grid>
                 </DataTemplate>
             </ListBox.ItemTemplate>
@@ -343,36 +353,38 @@ $ExportBtn = $Window.FindName("ExportBtn")
 $GitHubBtn = $Window.FindName("GitHubBtn")
 $DiscordBtn = $Window.FindName("DiscordBtn")
 
-$SearchBox.Text = "Search files, paths, timestamps, or signatures..."
-$SearchBox.Foreground = "#666666"
+if ($SearchBox) {
+    $SearchBox.Text = "Search files, paths, timestamps, or signatures..."
+    $SearchBox.Foreground = "#666666"
+}
 
 $allData = New-Object System.Collections.ArrayList
 
 foreach ($entry in $Bam) {
-    $sigColor = "#FFFFFF"
-    $sigBg = "#1A1A1A"
-    $sigBorder = "#333333"
+    $sigColor = "#FFFFFFFF"
+    $sigBg = "#FF1A1A1A"
+    $sigBorder = "#FF333333"
     
     switch ($entry.'Digital Signature') {
         "Verified" { 
-            $sigColor = "#888888"
-            $sigBg = "#0A1A0A"
-            $sigBorder = "#444444"
+            $sigColor = "#FF888888"
+            $sigBg = "#FF0A1A0A"
+            $sigBorder = "#FF444444"
         }
         "Suspicious" { 
-            $sigColor = "#666666"
-            $sigBg = "#1A0A0A"
-            $sigBorder = "#444444"
+            $sigColor = "#FF666666"
+            $sigBg = "#FF1A0A0A"
+            $sigBorder = "#FF444444"
         }
         "Unsigned" { 
-            $sigColor = "#888888"
-            $sigBg = "#0A0A1A"
-            $sigBorder = "#444444"
+            $sigColor = "#FF888888"
+            $sigBg = "#FF0A0A1A"
+            $sigBorder = "#FF444444"
         }
         "Deleted" { 
-            $sigColor = "#666666"
-            $sigBg = "#0A0A0A"
-            $sigBorder = "#333333"
+            $sigColor = "#FF666666"
+            $sigBg = "#FF0A0A0A"
+            $sigBorder = "#FF333333"
         }
     }
     
@@ -432,87 +444,70 @@ function Update-List {
     $SuspiciousCount.Text = $suspicious
     $UnsignedCount.Text = $unsigned
     $DeletedCount.Text = $deleted
-    
-    Update-ItemColors
 }
 
-function Update-ItemColors {
-    $items = $DataList.ItemsSource
-    if ($items -eq $null) { return }
+if ($SearchBox) {
+    $SearchBox.Add_GotFocus({
+        if ($SearchBox.Text -eq "Search files, paths, timestamps, or signatures...") {
+            $SearchBox.Text = ""
+            $SearchBox.Foreground = "#FFFFFF"
+        }
+    })
     
-    for ($i = 0; $i -lt $items.Count; $i++) {
-        $item = $items[$i]
-        $container = $DataList.ItemContainerGenerator.ContainerFromIndex($i)
-        if ($container -ne $null) {
-            $grid = $container.ContentTemplate.FindName("ItemGrid", $container)
-            if ($grid -ne $null) {
-                $sigBorder = $grid.FindName("SigBorder")
-                $sigBlock = $grid.FindName("SigBlock")
-                
-                if ($sigBorder) { 
-                    $sigBorder.Background = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigBg)))
-                    $sigBorder.BorderBrush = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigBorder)))
-                }
-                if ($sigBlock) { 
-                    $sigBlock.Foreground = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigColor)))
-                }
+    $SearchBox.Add_LostFocus({
+        if ([string]::IsNullOrWhiteSpace($SearchBox.Text)) {
+            $SearchBox.Text = "Search files, paths, timestamps, or signatures..."
+            $SearchBox.Foreground = "#666666"
+        }
+    })
+    
+    $SearchBox.Add_TextChanged({
+        Update-List
+    })
+}
+
+if ($ExportBtn) {
+    $ExportBtn.Add_Click({
+        $saveDialog = New-Object Microsoft.Win32.SaveFileDialog
+        $saveDialog.Filter = "CSV Files (*.csv)|*.csv"
+        $saveDialog.DefaultExt = "csv"
+        $saveDialog.FileName = "BAM_Report_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+        
+        if ($saveDialog.ShowDialog() -eq $true) {
+            $data = $DataList.ItemsSource
+            $csv = @()
+            $csv += '"Time","Path","Signature","File Name"'
+            foreach ($item in $data) {
+                $csv += "`"$($item.Time)`",`"$($item.Path)`",`"$($item.Signature)`",`"$($item.FileName)`""
             }
+            $csv -join "`r`n" | Out-File -FilePath $saveDialog.FileName -Encoding UTF8
+            [System.Windows.MessageBox]::Show("Export completed successfully!", "Success", "OK", "Information")
         }
-    }
+    })
 }
 
-$SearchBox.Add_GotFocus({
-    if ($SearchBox.Text -eq "Search files, paths, timestamps, or signatures...") {
-        $SearchBox.Text = ""
-        $SearchBox.Foreground = "#FFFFFF"
-    }
-})
+if ($GitHubBtn) {
+    $GitHubBtn.Add_Click({
+        Start-Process "https://github.com/junchrist"
+    })
+}
 
-$SearchBox.Add_LostFocus({
-    if ([string]::IsNullOrWhiteSpace($SearchBox.Text)) {
-        $SearchBox.Text = "Search files, paths, timestamps, or signatures..."
-        $SearchBox.Foreground = "#666666"
-    }
-})
+if ($DiscordBtn) {
+    $DiscordBtn.Add_Click({
+        Start-Process "https://discordapp.com/users/1357122264595693739"
+    })
+}
 
-$SearchBox.Add_TextChanged({
-    Update-List
-})
-
-$ExportBtn.Add_Click({
-    $saveDialog = New-Object Microsoft.Win32.SaveFileDialog
-    $saveDialog.Filter = "CSV Files (*.csv)|*.csv"
-    $saveDialog.DefaultExt = "csv"
-    $saveDialog.FileName = "BAM_Report_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+if ($Window) {
+    $Window.Add_Loaded({
+        Update-List
+    })
     
-    if ($saveDialog.ShowDialog() -eq $true) {
-        $data = $DataList.ItemsSource
-        $csv = @()
-        $csv += '"Time","Path","Signature","File Name"'
-        foreach ($item in $data) {
-            $csv += "`"$($item.Time)`",`"$($item.Path)`",`"$($item.Signature)`",`"$($item.FileName)`""
+    $Window.Add_KeyDown({
+        if ($_.Key -eq 'Escape') {
+            $Window.Close()
         }
-        $csv -join "`r`n" | Out-File -FilePath $saveDialog.FileName -Encoding UTF8
-        [System.Windows.MessageBox]::Show("Export completed successfully!", "Success", "OK", "Information")
-    }
-})
-
-$GitHubBtn.Add_Click({
-    Start-Process "https://github.com/junchrist"
-})
-
-$DiscordBtn.Add_Click({
-    Start-Process "https://discordapp.com/users/1357122264595693739"
-})
-
-$Window.Add_Loaded({
-    Update-List
-})
-
-$Window.Add_KeyDown({
-    if ($_.Key -eq 'Escape') {
-        $Window.Close()
-    }
-})
-
-$Window.ShowDialog() | Out-Null
+    })
+    
+    $Window.ShowDialog() | Out-Null
+}
