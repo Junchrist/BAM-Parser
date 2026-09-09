@@ -164,10 +164,10 @@ Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName PresentationCore
 Add-Type -AssemblyName WindowsBase
 
-[xml]$XAML = @"
+$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="BAM Forensic Analysis" Height="700" Width="1300"
+        Title="BAM Forensic Analysis" Height="750" Width="1300"
         WindowStartupLocation="CenterScreen"
         Background="#000000">
     <Window.Resources>
@@ -228,7 +228,7 @@ Add-Type -AssemblyName WindowsBase
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10" HorizontalAlignment="Center">
-            <TextBlock FontSize="14" Foreground="#888888" TextAlignment="Center">
+            <TextBlock FontSize="14" Foreground="#888888" TextAlignment="Center" FontFamily="Consolas">
                         d8b                           d8,                
                         ?88                          `8P            d8P  
                          88b                                     d888888P
@@ -246,24 +246,8 @@ d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <TextBox Grid.Column="0" x:Name="SearchBox" Margin="0,0,10,0" 
-                     TextChanged="SearchBox_TextChanged">
-                <TextBox.Text>Search files, paths, timestamps, or signatures...</TextBox.Text>
-                <TextBox.Style>
-                    <Style TargetType="TextBox">
-                        <Setter Property="Foreground" Value="#666666"/>
-                        <Style.Triggers>
-                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="Text" Value="">
-                                <Setter Property="Foreground" Value="#666666"/>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </TextBox.Style>
-            </TextBox>
-            <Button Grid.Column="1" x:Name="ExportBtn" Content="Export CSV" Click="ExportBtn_Click" Width="100"/>
+            <TextBox Grid.Column="0" x:Name="SearchBox" Margin="0,0,10,0" />
+            <Button Grid.Column="1" x:Name="ExportBtn" Content="Export CSV" Width="100"/>
         </Grid>
 
         <Grid Grid.Row="2" Margin="0,0,0,10">
@@ -306,52 +290,17 @@ d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P
             </Border>
         </Grid>
 
-        <ListBox Grid.Row="3" x:Name="DataList" Margin="0,0,0,10">
-            <ListBox.ItemTemplate>
-                <DataTemplate>
-                    <Grid Margin="0,2">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="150"/>
-                            <ColumnDefinition Width="180"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Foreground="#FFFFFF" FontSize="12">$([System.String]::Format('{0}', $_.Time))</TextBlock>
-                        <TextBlock Grid.Column="1" Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap">$([System.String]::Format('{0}', $_.Path))</TextBlock>
-                        <Border Grid.Column="2" Background="$([System.String]::Format('{0}', $_.SigBg))" 
-                                BorderBrush="$([System.String]::Format('{0}', $_.SigBorder))" 
-                                BorderThickness="1" CornerRadius="4" 
-                                Padding="6,2" Margin="0,2" HorizontalAlignment="Left">
-                            <TextBlock Foreground="$([System.String]::Format('{0}', $_.SigColor))" 
-                                       FontSize="10" FontWeight="Bold" 
-                                       TextAlignment="Center">$([System.String]::Format('{0}', $_.Signature))</TextBlock>
-                        </Border>
-                        <TextBlock Grid.Column="3" Foreground="#CCCCCC" FontSize="12" FontWeight="Bold">$([System.String]::Format('{0}', $_.FileName))</TextBlock>
-                    </Grid>
-                </DataTemplate>
-            </ListBox.ItemTemplate>
-        </ListBox>
-
+        <ListBox Grid.Row="3" x:Name="DataList" Margin="0,0,0,10" />
         <Border Grid.Row="4" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Padding="10">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" FontSize="12" Foreground="#888888">
-                    Made by @junchrist
-                </TextBlock>
+                <TextBlock Grid.Column="0" FontSize="12" Foreground="#888888">Made by @junchrist</TextBlock>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,15,0">
-                        <Hyperlink NavigateUri="https://github.com/junchrist" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#AAAAAA">
-                            GitHub
-                        </Hyperlink>
-                    </TextBlock>
-                    <TextBlock FontSize="12" Foreground="#888888">
-                        <Hyperlink NavigateUri="https://discordapp.com/users/1357122264595693739" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#AAAAAA">
-                            Discord
-                        </Hyperlink>
-                    </TextBlock>
+                    <Button x:Name="GitHubBtn" Content="GitHub" Margin="0,0,10,0" Width="80"/>
+                    <Button x:Name="DiscordBtn" Content="Discord" Width="80"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -359,7 +308,7 @@ d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P
 </Window>
 "@
 
-$reader = New-Object System.Xml.XmlNodeReader $XAML
+$reader = New-Object System.Xml.XmlNodeReader ([xml]$XAML)
 $Window = [Windows.Markup.XamlReader]::Load($reader)
 
 $SearchBox = $Window.FindName("SearchBox")
@@ -370,9 +319,14 @@ $SuspiciousCount = $Window.FindName("SuspiciousCount")
 $UnsignedCount = $Window.FindName("UnsignedCount")
 $DeletedCount = $Window.FindName("DeletedCount")
 $ExportBtn = $Window.FindName("ExportBtn")
+$GitHubBtn = $Window.FindName("GitHubBtn")
+$DiscordBtn = $Window.FindName("DiscordBtn")
 
-$allData = @()
-$displayData = @()
+$SearchBox.Text = "Search files, paths, timestamps, or signatures..."
+$SearchBox.Foreground = "#666666"
+
+$allData = New-Object System.Collections.ArrayList
+$displayData = New-Object System.Collections.ArrayList
 
 foreach ($entry in $Bam) {
     $sigColor = "#FFFFFF"
@@ -402,7 +356,7 @@ foreach ($entry in $Bam) {
         }
     }
     
-    $allData += [PSCustomObject]@{
+    $obj = [PSCustomObject]@{
         Time = $entry.'Last Execution User Time'
         Path = $entry.Path
         Signature = $entry.'Digital Signature'
@@ -411,9 +365,8 @@ foreach ($entry in $Bam) {
         SigBg = $sigBg
         SigBorder = $sigBorder
     }
+    [void]$allData.Add($obj)
 }
-
-$displayData = $allData
 
 function Update-List {
     $searchText = $SearchBox.Text
@@ -421,12 +374,16 @@ function Update-List {
         $searchText = ""
     }
     
+    $filtered = New-Object System.Collections.ArrayList
+    
     if ($searchText) {
-        $filtered = $allData | Where-Object {
-            $_.Time -match $searchText -or 
-            $_.Path -match $searchText -or 
-            $_.Signature -match $searchText -or 
-            $_.FileName -match $searchText
+        foreach ($item in $allData) {
+            if ($item.Time -match $searchText -or 
+                $item.Path -match $searchText -or 
+                $item.Signature -match $searchText -or 
+                $item.FileName -match $searchText) {
+                [void]$filtered.Add($item)
+            }
         }
     } else {
         $filtered = $allData
@@ -435,12 +392,74 @@ function Update-List {
     $displayData = $filtered
     $DataList.ItemsSource = $filtered
     
-    $TotalCount.Text = $filtered.Count
-    $VerifiedCount.Text = ($filtered | Where-Object { $_.Signature -eq "Verified" }).Count
-    $SuspiciousCount.Text = ($filtered | Where-Object { $_.Signature -eq "Suspicious" }).Count
-    $UnsignedCount.Text = ($filtered | Where-Object { $_.Signature -eq "Unsigned" }).Count
-    $DeletedCount.Text = ($filtered | Where-Object { $_.Signature -eq "Deleted" }).Count
+    $total = 0
+    $verified = 0
+    $suspicious = 0
+    $unsigned = 0
+    $deleted = 0
+    
+    foreach ($item in $filtered) {
+        $total++
+        switch ($item.Signature) {
+            "Verified" { $verified++ }
+            "Suspicious" { $suspicious++ }
+            "Unsigned" { $unsigned++ }
+            "Deleted" { $deleted++ }
+        }
+    }
+    
+    $TotalCount.Text = $total
+    $VerifiedCount.Text = $verified
+    $SuspiciousCount.Text = $suspicious
+    $UnsignedCount.Text = $unsigned
+    $DeletedCount.Text = $deleted
 }
+
+function Update-DataListItems {
+    $items = $DataList.ItemsSource
+    if ($items -eq $null) { return }
+    
+    for ($i = 0; $i -lt $items.Count; $i++) {
+        $item = $items[$i]
+        $container = $DataList.ItemContainerGenerator.ContainerFromIndex($i)
+        if ($container -ne $null) {
+            $grid = $container.ContentTemplate.FindName("ItemGrid", $container)
+            if ($grid -ne $null) {
+                $timeBlock = $grid.FindName("TimeBlock")
+                $pathBlock = $grid.FindName("PathBlock")
+                $sigBorder = $grid.FindName("SigBorder")
+                $sigBlock = $grid.FindName("SigBlock")
+                $fileBlock = $grid.FindName("FileBlock")
+                
+                if ($timeBlock) { $timeBlock.Text = $item.Time }
+                if ($pathBlock) { $pathBlock.Text = $item.Path }
+                if ($sigBorder) { 
+                    $sigBorder.Background = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigBg)))
+                    $sigBorder.BorderBrush = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigBorder)))
+                }
+                if ($sigBlock) { 
+                    $sigBlock.Text = $item.Signature
+                    $sigBlock.Foreground = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigColor)))
+                }
+                if ($fileBlock) { $fileBlock.Text = $item.FileName }
+            }
+        }
+    }
+}
+
+$SearchBox.Add_GotFocus({
+    if ($SearchBox.Text -eq "Search files, paths, timestamps, or signatures...") {
+        $SearchBox.Text = ""
+        $SearchBox.Foreground = "#FFFFFF"
+    }
+})
+
+$SearchBox.Add_LostFocus({
+    if ([string]::IsNullOrWhiteSpace($SearchBox.Text)) {
+        $SearchBox.Text = "Search files, paths, timestamps, or signatures..."
+        $SearchBox.Foreground = "#666666"
+    }
+})
 
 $SearchBox.Add_TextChanged({
     Update-List
@@ -462,6 +481,14 @@ $ExportBtn.Add_Click({
         $csv -join "`r`n" | Out-File -FilePath $saveDialog.FileName -Encoding UTF8
         [System.Windows.MessageBox]::Show("Export completed successfully!", "Success", "OK", "Information")
     }
+})
+
+$GitHubBtn.Add_Click({
+    Start-Process "https://github.com/junchrist"
+})
+
+$DiscordBtn.Add_Click({
+    Start-Process "https://discordapp.com/users/1357122264595693739"
 })
 
 $Window.Add_Loaded({
