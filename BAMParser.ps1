@@ -1,20 +1,20 @@
-Clear-Host
+cls
 
 Write-Host ""
 Write-Host @"
-    ▄████████ ███    █▄   ▄████████    ▄█    █▄       ▄████████    ▄████████  ▄█     ▄████████     ███     
-  ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███    ███    ███ ▀█████████▄ 
-  ███    █▀  ███    ███ ███    █▀    ███    ███     ███    ███   ███    ███ ███▌   ███    █▀     ▀███▀▀██ 
- ▄███▄▄▄     ███    ███ ███         ▄███▄▄▄▄███▄▄   ███    ███  ▄███▄▄▄▄██▀ ███▌   ███            ███   ▀ 
-▀▀███▀▀▀     ███    ███ ███        ▀▀███▀▀▀▀███▀  ▀███████████ ▀▀███▀▀▀▀▀   ███▌ ▀███████████     ███     
-  ███    █▄  ███    ███ ███    █▄    ███    ███     ███    ███ ▀███████████ ███           ███     ███     
-  ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███     ▄█    ███     ███     
-  ██████████ ████████▀  ████████▀    ███    █▀      ███    █▀    ███    ███ █▀    ▄████████▀     ▄████▀   
-                                                                 ███    ███                                
-"@ -ForegroundColor White
-
+.dP' dP"Yb.             `Yb.            db                                       
+dP'    `b   'Yb             `Yb        db    db             db                     
+                              Yb                                                   
+ 'Yb      'Yb   .dP'  dP'      Yb        'Yb    `Yb    dP' 'Yb .d888b.  `Yb.d888b  
+  88       88   88    88      dPYb        88      Yb  dP    88 8'   `Yb  88'    8Y 
+  88       88   Y8   .88    ,dP  Yb       88       YbdP     88 Yb.   88  88     8P 
+ .8P      .8P   `Y88P'88  .dP'    `Yb.   .8P       .8P     .8P     .dP   88   ,dP  
+                      88                         dP'  b          .dP'    88        
+                      88                         Y.  ,P        .dP'      88        
+                      Y8.                         `""'                  .8P        
+"@ -ForegroundColor Red
 Write-Host ""
-Write-Host "                                 Made by @junchrist on Discord" -ForegroundColor White
+Write-Host "                                 made by @junchrist on Discord"
 Write-Host ""
 
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {  
@@ -169,21 +169,23 @@ $ContenidoHtml = @'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BAM Forensic Analysis | Junchrist</title>
+    <title>BAM Forensic Analysis | JunChrist</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #000000;
-            --bg-secondary: #0a0a0f;
-            --bg-tertiary: #11111a;
-            --text-primary: #ffffff;
-            --text-secondary: #cccccc;
-            --text-muted: #888888;
-            --border: #1a1a2e;
-            --success: #ffffff;
-            --warning: #aaaaaa;
-            --danger: #666666;
-            --suspicious: #444444;
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #151520;
+            --bg-tertiary: #1e1e2e;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #2d3748;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --suspicious: #dc2626;
         }
 
         * {
@@ -194,7 +196,7 @@ $ContenidoHtml = @'
 
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-primary);
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 100%);
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
@@ -207,7 +209,7 @@ $ContenidoHtml = @'
         }
 
         .header {
-            background: var(--bg-secondary);
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
             border-bottom: 1px solid var(--border);
             padding: 2.5rem 0;
             text-align: center;
@@ -222,12 +224,12 @@ $ContenidoHtml = @'
             left: 0;
             right: 0;
             height: 2px;
-            background: var(--text-primary);
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
         }
 
         .logo {
             font-family: 'JetBrains Mono', monospace;
-            color: var(--text-primary);
+            color: var(--accent-primary);
             font-size: 0.75rem;
             line-height: 1.3;
             margin-bottom: 1.5rem;
@@ -239,7 +241,10 @@ $ContenidoHtml = @'
             font-size: 2.2rem;
             font-weight: 700;
             margin-bottom: 0.5rem;
-            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
 
         .subtitle {
@@ -270,7 +275,7 @@ $ContenidoHtml = @'
         .stat-value {
             font-size: 1.5rem;
             font-weight: 700;
-            color: var(--text-primary);
+            color: var(--accent-primary);
             font-family: 'JetBrains Mono', monospace;
         }
 
@@ -307,8 +312,8 @@ $ContenidoHtml = @'
 
         .search-input:focus {
             outline: none;
-            border-color: var(--text-primary);
-            box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.05);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
         }
 
         .search-icon {
@@ -331,11 +336,11 @@ $ContenidoHtml = @'
             border-radius: 12px;
             overflow: hidden;
             border: 1px solid var(--border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
         }
 
         .table-header {
-            background: var(--bg-tertiary);
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, #252542 100%);
             border-bottom: 1px solid var(--border);
         }
 
@@ -349,7 +354,7 @@ $ContenidoHtml = @'
             padding: 1.25rem 1rem;
             font-weight: 600;
             font-size: 0.75rem;
-            color: var(--text-primary);
+            color: var(--accent-primary);
             text-transform: uppercase;
             letter-spacing: 0.8px;
             cursor: pointer;
@@ -361,7 +366,7 @@ $ContenidoHtml = @'
         }
 
         .table-header-cell:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(99, 102, 241, 0.1);
         }
 
         .table-header-cell.sorted::after {
@@ -394,7 +399,7 @@ $ContenidoHtml = @'
         }
 
         .table-body::-webkit-scrollbar-thumb {
-            background: var(--text-muted);
+            background: var(--accent-primary);
             border-radius: 3px;
         }
 
@@ -451,25 +456,25 @@ $ContenidoHtml = @'
         }
 
         .signature-verified {
-            background: rgba(255, 255, 255, 0.05);
-            color: var(--text-primary);
-            border-color: var(--text-primary);
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border-color: var(--success);
         }
 
         .signature-unsigned {
-            background: rgba(255, 255, 255, 0.02);
-            color: var(--text-muted);
-            border-color: var(--text-muted);
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: var(--warning);
         }
 
         .signature-suspicious {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--text-secondary);
-            border-color: var(--text-secondary);
+            background: rgba(220, 38, 38, 0.2);
+            color: var(--suspicious);
+            border-color: var(--suspicious);
         }
 
         .signature-deleted {
-            background: rgba(255, 255, 255, 0.01);
+            background: rgba(100, 116, 139, 0.15);
             color: var(--text-muted);
             border-color: var(--text-muted);
         }
@@ -500,20 +505,18 @@ $ContenidoHtml = @'
         }
 
         .footer-link {
-            color: var(--text-primary);
+            color: var(--accent-primary);
             text-decoration: none;
             font-size: 0.8rem;
             font-weight: 600;
             transition: all 0.3s ease;
             padding: 0.5rem 1rem;
             border-radius: 6px;
-            border: 1px solid var(--border);
         }
 
         .footer-link:hover {
             color: var(--text-primary);
-            background: var(--text-primary);
-            color: var(--bg-primary);
+            background: var(--accent-primary);
         }
 
         .no-data {
@@ -526,7 +529,7 @@ $ContenidoHtml = @'
         .loading {
             text-align: center;
             padding: 2rem;
-            color: var(--text-muted);
+            color: var(--accent-primary);
         }
 
         @media (max-width: 1024px) {
@@ -565,17 +568,18 @@ $ContenidoHtml = @'
 <body>
     <div class="header">
         <div class="container">
-            <div class="logo">    ▄████████ ███    █▄   ▄████████    ▄█    █▄       ▄████████    ▄████████  ▄█     ▄████████     ███     
-  ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███    ███    ███ ▀█████████▄ 
-  ███    █▀  ███    ███ ███    █▀    ███    ███     ███    ███   ███    ███ ███▌   ███    █▀     ▀███▀▀██ 
- ▄███▄▄▄     ███    ███ ███         ▄███▄▄▄▄███▄▄   ███    ███  ▄███▄▄▄▄██▀ ███▌   ███            ███   ▀ 
-▀▀███▀▀▀     ███    ███ ███        ▀▀███▀▀▀▀███▀  ▀███████████ ▀▀███▀▀▀▀▀   ███▌ ▀███████████     ███     
-  ███    █▄  ███    ███ ███    █▄    ███    ███     ███    ███ ▀███████████ ███           ███     ███     
-  ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███     ▄█    ███     ███     
-  ██████████ ████████▀  ████████▀    ███    █▀      ███    █▀    ███    ███ █▀    ▄████████▀     ▄████▀   
-                                                                 ███    ███                                </div>
+            <div class="logo">.dP' dP"Yb.             `Yb.            db                                       
+dP'    `b   'Yb             `Yb        db    db             db                     
+                              Yb                                                   
+ 'Yb      'Yb   .dP'  dP'      Yb        'Yb    `Yb    dP' 'Yb .d888b.  `Yb.d888b  
+  88       88   88    88      dPYb        88      Yb  dP    88 8'   `Yb  88'    8Y 
+  88       88   Y8   .88    ,dP  Yb       88       YbdP     88 Yb.   88  88     8P 
+ .8P      .8P   `Y88P'88  .dP'    `Yb.   .8P       .8P     .8P     .dP   88   ,dP  
+                      88                         dP'  b          .dP'    88        
+                      88                         Y.  ,P        .dP'      88        
+                      Y8.                         `""'                  .8P        </div>
             <h1 class="title">BAM Forensic Analysis</h1>
-            <p class="subtitle">Made by @junchrist on Discord</p>
+            <p class="subtitle">Professional Execution Timeline Analysis • Made by @junchrist on Discord</p>
         </div>
     </div>
 
@@ -639,7 +643,7 @@ $ContenidoHtml = @'
         <div class="container">
             <div class="footer-content">
                 <div class="footer-info">
-                    Made by @junchrist on Discord
+                    © 2025 Forensic Analysis Tool • Made by @junchrist on Discord
                 </div>
                 <div class="footer-links">
                     <a href="https://github.com/junchrist" class="footer-link" target="_blank">GitHub</a>
@@ -654,16 +658,16 @@ $ContenidoHtml = @'
 '@
 
 foreach ($entry in $Bam) {
-    $escapedTime = $entry.'Last Execution User Time'.Replace("`"", "`"`"")
-    $escapedPath = $entry.Path.Replace("`"", "`"`"")
-    $escapedSignature = $entry.'Digital Signature'.Replace("`"", "`"`"")
-    $escapedFileName = $entry.'File Name'.Replace("`"", "`"`"")
+    $escapedTime = $entry.'Last Execution User Time'.Replace('"', '\"')
+    $escapedPath = $entry.Path.Replace('"', '\"')
+    $escapedSignature = $entry.'Digital Signature'.Replace('"', '\"')
+    $escapedFileName = $entry.'File Name'.Replace('"', '\"')
     $ContenidoHtml += @"
             {
-                time: "$escapedTime",
-                path: "$escapedPath",
-                signature: "$escapedSignature",
-                fileName: "$escapedFileName"
+                time: `"$escapedTime`",
+                path: `"$escapedPath`",
+                signature: `"$escapedSignature`",
+                fileName: `"$escapedFileName`"
             },
 "@
 }
@@ -770,6 +774,7 @@ $ContenidoHtml += @'
                 applyFilters();
             });
         });
+
         document.addEventListener('DOMContentLoaded', function() {
             updateStats();
             applyFilters();
@@ -779,7 +784,7 @@ $ContenidoHtml += @'
 </html>
 '@
 
-$htmlFilePath = Join-Path $env:TEMP "BAM_Forensic_Analysis.html" 
+$htmlFilePath = Join-Path $env:TEMP "BAM_Forensic_Analysis.html"
 $ContenidoHtml | Out-File -FilePath $htmlFilePath -Encoding UTF8
 
 Start-Process $htmlFilePath
