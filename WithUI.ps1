@@ -2,16 +2,13 @@ cls
 
 Write-Host ""
 Write-Host @"
-.dP' dP"Yb.             `Yb.            db                                       
-dP'    `b   'Yb             `Yb        db    db             db                     
-                              Yb                                                   
- 'Yb      'Yb   .dP'  dP'      Yb        'Yb    `Yb    dP' 'Yb .d888b.  `Yb.d888b  
-  88       88   88    88      dPYb        88      Yb  dP    88 8'   `Yb  88'    8Y 
-  88       88   Y8   .88    ,dP  Yb       88       YbdP     88 Yb.   88  88     8P 
- .8P      .8P   `Y88P'88  .dP'    `Yb.   .8P       .8P     .8P     .dP   88   ,dP  
-                      88                         dP'  b          .dP'    88        
-                      88                         Y.  ,P        .dP'      88        
-                      Y8.                         `""'                  .8P        
+                        d8b                           d8,                
+                        ?88                          `8P            d8P  
+                         88b                                     d888888P
+ d8888b?88   d8P d8888b  888888b  d888b8b    88bd88b  88b .d888b,  ?88'  
+d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P   
+88b    ?8(  d88 88b     d88   88P88b  ,88b  d88      d88    `?8b   88b   
+`?888P'`?88P'?8b`?888P'd88'   88b`?88P'`88bd88'     d88' `?888P'   `?8b
 "@ -ForegroundColor Red
 Write-Host ""
 Write-Host "                                 made by @junchrist on Discord"
@@ -112,14 +109,14 @@ foreach($ii in $bv){
 }
 
 if ($Users.Count -eq 0) {
+    Write-Host "No BAM entries found." -ForegroundColor Yellow
+    Read-Host "Press Enter to exit"
     exit
 }
 
 $rpath = @("HKLM:\SYSTEM\CurrentControlSet\Services\bam\","HKLM:\SYSTEM\CurrentControlSet\Services\bam\state\")
 
-$UserTime = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).TimeZoneKeyName
 $UserBias = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).ActiveTimeBias
-$UserDay = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).DaylightBias
 
 $Bam = @()
 Foreach ($Sid in $Users) {
@@ -163,628 +160,318 @@ Foreach ($Sid in $Users) {
 
 $ErrorActionPreference = 'Continue'
 
-$ContenidoHtml = @'
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BAM Forensic Analysis | JunChrist</title>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #151520;
-            --bg-tertiary: #1e1e2e;
-            --accent-primary: #6366f1;
-            --accent-secondary: #8b5cf6;
-            --text-primary: #f8fafc;
-            --text-secondary: #cbd5e1;
-            --text-muted: #64748b;
-            --border: #2d3748;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
-            --suspicious: #dc2626;
-        }
+Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName WindowsBase
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+[xml]$XAML = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="BAM Forensic Analysis" Height="700" Width="1300"
+        WindowStartupLocation="CenterScreen"
+        Background="#000000">
+    <Window.Resources>
+        <Style TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+        <Style TargetType="TextBox">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#0A0A0A"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="8"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
+        </Style>
+        <Style TargetType="ListBox">
+            <Setter Property="Background" Value="#0A0A0A"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#1A1A1A"/>
+                </Trigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="#2A2A2A"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style TargetType="Button">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Background" Value="#1A1A1A"/>
+            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#333333"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 100%);
-            color: var(--text-primary);
-            line-height: 1.6;
-            min-height: 100vh;
-        }
+        <StackPanel Grid.Row="0" Margin="0,0,0,10" HorizontalAlignment="Center">
+            <TextBlock FontSize="14" Foreground="#888888" TextAlignment="Center">
+                        d8b                           d8,                
+                        ?88                          `8P            d8P  
+                         88b                                     d888888P
+ d8888b?88   d8P d8888b  888888b  d888b8b    88bd88b  88b .d888b,  ?88'  
+d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P   
+88b    ?8(  d88 88b     d88   88P88b  ,88b  d88      d88    `?8b   88b   
+`?888P'`?88P'?8b`?888P'd88'   88b`?88P'`88bd88'     d88' `?888P'   `?8b
+            </TextBlock>
+            <TextBlock FontSize="24" FontWeight="Bold" Margin="0,10,0,0">BAM Forensic Analysis</TextBlock>
+            <TextBlock FontSize="14" Foreground="#888888" Margin="0,5,0,0">Professional Execution Timeline Analysis • Made by @junchrist on Discord</TextBlock>
+        </StackPanel>
 
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox Grid.Column="0" x:Name="SearchBox" Margin="0,0,10,0" 
+                     TextChanged="SearchBox_TextChanged">
+                <TextBox.Text>Search files, paths, timestamps, or signatures...</TextBox.Text>
+                <TextBox.Style>
+                    <Style TargetType="TextBox">
+                        <Setter Property="Foreground" Value="#666666"/>
+                        <Style.Triggers>
+                            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="Text" Value="">
+                                <Setter Property="Foreground" Value="#666666"/>
+                            </Trigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBox.Style>
+            </TextBox>
+            <Button Grid.Column="1" x:Name="ExportBtn" Content="Export CSV" Click="ExportBtn_Click" Width="100"/>
+        </Grid>
 
-        .header {
-            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
-            border-bottom: 1px solid var(--border);
-            padding: 2.5rem 0;
-            text-align: center;
-            position: relative;
-            overflow: hidden;
-        }
+        <Grid Grid.Row="2" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Margin="0,0,5,0" Padding="10">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="TotalCount" FontSize="20" FontWeight="Bold" TextAlignment="Center">0</TextBlock>
+                    <TextBlock Foreground="#666666" FontSize="10" TextAlignment="Center">TOTAL</TextBlock>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="1" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Margin="5,0,5,0" Padding="10">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="VerifiedCount" FontSize="20" FontWeight="Bold" TextAlignment="Center" Foreground="#888888">0</TextBlock>
+                    <TextBlock Foreground="#666666" FontSize="10" TextAlignment="Center">VERIFIED</TextBlock>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="2" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Margin="5,0,5,0" Padding="10">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="SuspiciousCount" FontSize="20" FontWeight="Bold" TextAlignment="Center" Foreground="#666666">0</TextBlock>
+                    <TextBlock Foreground="#666666" FontSize="10" TextAlignment="Center">SUSPICIOUS</TextBlock>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="3" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Margin="5,0,5,0" Padding="10">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="UnsignedCount" FontSize="20" FontWeight="Bold" TextAlignment="Center" Foreground="#888888">0</TextBlock>
+                    <TextBlock Foreground="#666666" FontSize="10" TextAlignment="Center">UNSIGNED</TextBlock>
+                </StackPanel>
+            </Border>
+            <Border Grid.Column="4" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Margin="5,0,0,0" Padding="10">
+                <StackPanel HorizontalAlignment="Center">
+                    <TextBlock x:Name="DeletedCount" FontSize="20" FontWeight="Bold" TextAlignment="Center" Foreground="#666666">0</TextBlock>
+                    <TextBlock Foreground="#666666" FontSize="10" TextAlignment="Center">DELETED</TextBlock>
+                </StackPanel>
+            </Border>
+        </Grid>
 
-        .header::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
-        }
+        <ListBox Grid.Row="3" x:Name="DataList" Margin="0,0,0,10">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid Margin="0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="180"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Foreground="#FFFFFF" FontSize="12">$([System.String]::Format('{0}', $_.Time))</TextBlock>
+                        <TextBlock Grid.Column="1" Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap">$([System.String]::Format('{0}', $_.Path))</TextBlock>
+                        <Border Grid.Column="2" Background="$([System.String]::Format('{0}', $_.SigBg))" 
+                                BorderBrush="$([System.String]::Format('{0}', $_.SigBorder))" 
+                                BorderThickness="1" CornerRadius="4" 
+                                Padding="6,2" Margin="0,2" HorizontalAlignment="Left">
+                            <TextBlock Foreground="$([System.String]::Format('{0}', $_.SigColor))" 
+                                       FontSize="10" FontWeight="Bold" 
+                                       TextAlignment="Center">$([System.String]::Format('{0}', $_.Signature))</TextBlock>
+                        </Border>
+                        <TextBlock Grid.Column="3" Foreground="#CCCCCC" FontSize="12" FontWeight="Bold">$([System.String]::Format('{0}', $_.FileName))</TextBlock>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
 
-        .logo {
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--accent-primary);
-            font-size: 0.75rem;
-            line-height: 1.3;
-            margin-bottom: 1.5rem;
-            white-space: pre;
-            opacity: 0.9;
-        }
+        <Border Grid.Row="4" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Padding="10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" FontSize="12" Foreground="#888888">
+                    Made by @junchrist
+                </TextBlock>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock FontSize="12" Foreground="#888888" Margin="0,0,15,0">
+                        <Hyperlink NavigateUri="https://github.com/junchrist" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#AAAAAA">
+                            GitHub
+                        </Hyperlink>
+                    </TextBlock>
+                    <TextBlock FontSize="12" Foreground="#888888">
+                        <Hyperlink NavigateUri="https://discordapp.com/users/1357122264595693739" RequestNavigate="Hyperlink_RequestNavigate" Foreground="#AAAAAA">
+                            Discord
+                        </Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
+"@
 
-        .title {
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
+$reader = New-Object System.Xml.XmlNodeReader $XAML
+$Window = [Windows.Markup.XamlReader]::Load($reader)
 
-        .subtitle {
-            color: var(--text-secondary);
-            font-size: 1rem;
-            font-weight: 400;
-            opacity: 0.8;
-        }
+$SearchBox = $Window.FindName("SearchBox")
+$DataList = $Window.FindName("DataList")
+$TotalCount = $Window.FindName("TotalCount")
+$VerifiedCount = $Window.FindName("VerifiedCount")
+$SuspiciousCount = $Window.FindName("SuspiciousCount")
+$UnsignedCount = $Window.FindName("UnsignedCount")
+$DeletedCount = $Window.FindName("DeletedCount")
+$ExportBtn = $Window.FindName("ExportBtn")
 
-        .stats-bar {
-            background: var(--bg-secondary);
-            padding: 1rem 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .stats-container {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .stat-item {
-            text-align: center;
-            padding: 0.5rem 1rem;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--accent-primary);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .controls {
-            background: var(--bg-secondary);
-            padding: 1.5rem 0;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .search-box {
-            position: relative;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-
-        .search-input {
-            width: 100%;
-            padding: 0.75rem 1rem 0.75rem 3rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            color: var(--text-primary);
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-
-        .search-input:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        }
-
-        .search-icon {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-            width: 16px;
-            height: 16px;
-        }
-
-        .table-section {
-            padding: 2rem 0;
-        }
-
-        .data-table {
-            width: 100%;
-            background: var(--bg-secondary);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .table-header {
-            background: linear-gradient(135deg, var(--bg-tertiary) 0%, #252542 100%);
-            border-bottom: 1px solid var(--border);
-        }
-
-        .table-header-row {
-            display: grid;
-            grid-template-columns: 200px 1fr 150px 180px;
-            gap: 1px;
-        }
-
-        .table-header-cell {
-            padding: 1.25rem 1rem;
-            font-weight: 600;
-            font-size: 0.75rem;
-            color: var(--accent-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            cursor: pointer;
-            user-select: none;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .table-header-cell:hover {
-            background: rgba(99, 102, 241, 0.1);
-        }
-
-        .table-header-cell.sorted::after {
-            content: '↕';
-            font-size: 0.7rem;
-            opacity: 0.6;
-        }
-
-        .table-header-cell.asc::after {
-            content: '↑';
-            opacity: 1;
-        }
-
-        .table-header-cell.desc::after {
-            content: '↓';
-            opacity: 1;
-        }
-
-        .table-body {
-            max-height: 65vh;
-            overflow-y: auto;
-        }
-
-        .table-body::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .table-body::-webkit-scrollbar-track {
-            background: var(--bg-primary);
-        }
-
-        .table-body::-webkit-scrollbar-thumb {
-            background: var(--accent-primary);
-            border-radius: 3px;
-        }
-
-        .table-row {
-            display: grid;
-            grid-template-columns: 200px 1fr 150px 180px;
-            gap: 1px;
-            border-bottom: 1px solid var(--border);
-            transition: all 0.3s ease;
-        }
-
-        .table-row:hover {
-            background: var(--bg-tertiary);
-            transform: translateX(4px);
-        }
-
-        .table-cell {
-            padding: 1.25rem 1rem;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            word-break: break-word;
-        }
-
-        .timestamp {
-            color: var(--text-primary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .file-path {
-            color: var(--text-primary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            line-height: 1.4;
-        }
-
-        .file-name {
-            color: var(--text-secondary);
-            font-weight: 600;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-        }
-
-        .signature {
-            padding: 0.4rem 0.8rem;
-            border-radius: 8px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border: 1px solid;
-        }
-
-        .signature-verified {
-            background: rgba(16, 185, 129, 0.15);
-            color: var(--success);
-            border-color: var(--success);
-        }
-
-        .signature-unsigned {
-            background: rgba(245, 158, 11, 0.15);
-            color: var(--warning);
-            border-color: var(--warning);
-        }
-
-        .signature-suspicious {
-            background: rgba(220, 38, 38, 0.2);
-            color: var(--suspicious);
-            border-color: var(--suspicious);
-        }
-
-        .signature-deleted {
-            background: rgba(100, 116, 139, 0.15);
-            color: var(--text-muted);
-            border-color: var(--text-muted);
-        }
-
-        .footer {
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border);
-            padding: 2rem 0;
-            margin-top: 3rem;
-        }
-
-        .footer-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .footer-info {
-            color: var(--text-secondary);
-            font-size: 0.8rem;
-        }
-
-        .footer-links {
-            display: flex;
-            gap: 1.5rem;
-        }
-
-        .footer-link {
-            color: var(--accent-primary);
-            text-decoration: none;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            padding: 0.5rem 1rem;
-            border-radius: 6px;
-        }
-
-        .footer-link:hover {
-            color: var(--text-primary);
-            background: var(--accent-primary);
-        }
-
-        .no-data {
-            text-align: center;
-            padding: 4rem;
-            color: var(--text-muted);
-            font-size: 1rem;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 2rem;
-            color: var(--accent-primary);
-        }
-
-        @media (max-width: 1024px) {
-            .table-header-row,
-            .table-row {
-                grid-template-columns: 180px 1fr 140px 160px;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .table-header-row,
-            .table-row {
-                grid-template-columns: 150px 1fr 120px 140px;
-            }
-            
-            .container {
-                padding: 0 15px;
-            }
-            
-            .table-cell {
-                padding: 1rem 0.75rem;
-                font-size: 0.8rem;
-            }
-            
-            .footer-content {
-                flex-direction: column;
-                text-align: center;
-            }
-            
-            .title {
-                font-size: 1.8rem;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="container">
-            <div class="logo">.dP' dP"Yb.             `Yb.            db                                       
-dP'    `b   'Yb             `Yb        db    db             db                     
-                              Yb                                                   
- 'Yb      'Yb   .dP'  dP'      Yb        'Yb    `Yb    dP' 'Yb .d888b.  `Yb.d888b  
-  88       88   88    88      dPYb        88      Yb  dP    88 8'   `Yb  88'    8Y 
-  88       88   Y8   .88    ,dP  Yb       88       YbdP     88 Yb.   88  88     8P 
- .8P      .8P   `Y88P'88  .dP'    `Yb.   .8P       .8P     .8P     .dP   88   ,dP  
-                      88                         dP'  b          .dP'    88        
-                      88                         Y.  ,P        .dP'      88        
-                      Y8.                         `""'                  .8P        </div>
-            <h1 class="title">BAM Forensic Analysis</h1>
-            <p class="subtitle">Professional Execution Timeline Analysis • Made by @junchrist on Discord</p>
-        </div>
-    </div>
-
-    <div class="stats-bar">
-        <div class="container">
-            <div class="stats-container">
-                <div class="stat-item">
-                    <div class="stat-value" id="totalEntries">0</div>
-                    <div class="stat-label">Total Entries</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="verifiedFiles">0</div>
-                    <div class="stat-label">Verified</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="suspiciousFiles">0</div>
-                    <div class="stat-label">Suspicious</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="unsignedFiles">0</div>
-                    <div class="stat-label">Unsigned</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-value" id="deletedFiles">0</div>
-                    <div class="stat-label">Deleted</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="controls">
-        <div class="container">
-            <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                </svg>
-                <input type="text" class="search-input" id="searchInput" placeholder="Search files, paths, timestamps, or signatures...">
-            </div>
-        </div>
-    </div>
-
-    <div class="table-section">
-        <div class="container">
-            <div class="data-table">
-                <div class="table-header">
-                    <div class="table-header-row">
-                        <div class="table-header-cell" data-sort="time">Execution Time</div>
-                        <div class="table-header-cell" data-sort="path">File Path</div>
-                        <div class="table-header-cell" data-sort="signature">Signature Status</div>
-                        <div class="table-header-cell" data-sort="fileName">File Name</div>
-                    </div>
-                </div>
-                <div class="table-body" id="tableBody">
-                    <div class="loading">Loading forensic data...</div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="footer">
-        <div class="container">
-            <div class="footer-content">
-                <div class="footer-info">
-                    © 2025 Forensic Analysis Tool • Made by @junchrist on Discord
-                </div>
-                <div class="footer-links">
-                    <a href="https://github.com/junchrist" class="footer-link" target="_blank">GitHub</a>
-                    <a href="https://discordapp.com/users/1357122264595693739" class="footer-link" target="_blank">Discord</a>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const entries = [
-'@
+$allData = @()
+$displayData = @()
 
 foreach ($entry in $Bam) {
-    $escapedTime = $entry.'Last Execution User Time'.Replace('"', '\"')
-    $escapedPath = $entry.Path.Replace('"', '\"')
-    $escapedSignature = $entry.'Digital Signature'.Replace('"', '\"')
-    $escapedFileName = $entry.'File Name'.Replace('"', '\"')
-    $ContenidoHtml += @"
-            {
-                time: `"$escapedTime`",
-                path: `"$escapedPath`",
-                signature: `"$escapedSignature`",
-                fileName: `"$escapedFileName`"
-            },
-"@
+    $sigColor = "#FFFFFF"
+    $sigBg = "#1A1A1A"
+    $sigBorder = "#333333"
+    
+    switch ($entry.'Digital Signature') {
+        "Verified" { 
+            $sigColor = "#888888"
+            $sigBg = "#0A1A0A"
+            $sigBorder = "#444444"
+        }
+        "Suspicious" { 
+            $sigColor = "#666666"
+            $sigBg = "#1A0A0A"
+            $sigBorder = "#444444"
+        }
+        "Unsigned" { 
+            $sigColor = "#888888"
+            $sigBg = "#0A0A1A"
+            $sigBorder = "#444444"
+        }
+        "Deleted" { 
+            $sigColor = "#666666"
+            $sigBg = "#0A0A0A"
+            $sigBorder = "#333333"
+        }
+    }
+    
+    $allData += [PSCustomObject]@{
+        Time = $entry.'Last Execution User Time'
+        Path = $entry.Path
+        Signature = $entry.'Digital Signature'
+        FileName = $entry.'File Name'
+        SigColor = $sigColor
+        SigBg = $sigBg
+        SigBorder = $sigBorder
+    }
 }
 
-$ContenidoHtml += @'
-        ];
+$displayData = $allData
 
-        let currentSort = { column: "time", direction: "desc" };
-        let filteredEntries = [...entries];
-
-        function getSignatureClass(signature) {
-            if (signature === 'Verified') return 'signature-verified';
-            if (signature === 'Suspicious') return 'signature-suspicious';
-            if (signature === 'Unsigned') return 'signature-unsigned';
-            if (signature === 'Deleted') return 'signature-deleted';
-            return 'signature-unsigned';
+function Update-List {
+    $searchText = $SearchBox.Text
+    if ($searchText -eq "Search files, paths, timestamps, or signatures...") {
+        $searchText = ""
+    }
+    
+    if ($searchText) {
+        $filtered = $allData | Where-Object {
+            $_.Time -match $searchText -or 
+            $_.Path -match $searchText -or 
+            $_.Signature -match $searchText -or 
+            $_.FileName -match $searchText
         }
+    } else {
+        $filtered = $allData
+    }
+    
+    $displayData = $filtered
+    $DataList.ItemsSource = $filtered
+    
+    $TotalCount.Text = $filtered.Count
+    $VerifiedCount.Text = ($filtered | Where-Object { $_.Signature -eq "Verified" }).Count
+    $SuspiciousCount.Text = ($filtered | Where-Object { $_.Signature -eq "Suspicious" }).Count
+    $UnsignedCount.Text = ($filtered | Where-Object { $_.Signature -eq "Unsigned" }).Count
+    $DeletedCount.Text = ($filtered | Where-Object { $_.Signature -eq "Deleted" }).Count
+}
 
-        function updateStats() {
-            const total = entries.length;
-            const verified = entries.filter(e => e.signature === 'Verified').length;
-            const suspicious = entries.filter(e => e.signature === 'Suspicious').length;
-            const unsigned = entries.filter(e => e.signature === 'Unsigned').length;
-            const deleted = entries.filter(e => e.signature === 'Deleted').length;
+$SearchBox.Add_TextChanged({
+    Update-List
+})
 
-            document.getElementById('totalEntries').textContent = total;
-            document.getElementById('verifiedFiles').textContent = verified;
-            document.getElementById('suspiciousFiles').textContent = suspicious;
-            document.getElementById('unsignedFiles').textContent = unsigned;
-            document.getElementById('deletedFiles').textContent = deleted;
+$ExportBtn.Add_Click({
+    $saveDialog = New-Object Microsoft.Win32.SaveFileDialog
+    $saveDialog.Filter = "CSV Files (*.csv)|*.csv"
+    $saveDialog.DefaultExt = "csv"
+    $saveDialog.FileName = "BAM_Report_$(Get-Date -Format 'yyyyMMdd_HHmmss')"
+    
+    if ($saveDialog.ShowDialog() -eq $true) {
+        $data = $DataList.ItemsSource
+        $csv = @()
+        $csv += '"Time","Path","Signature","File Name"'
+        foreach ($item in $data) {
+            $csv += "`"$($item.Time)`",`"$($item.Path)`",`"$($item.Signature)`",`"$($item.FileName)`""
         }
+        $csv -join "`r`n" | Out-File -FilePath $saveDialog.FileName -Encoding UTF8
+        [System.Windows.MessageBox]::Show("Export completed successfully!", "Success", "OK", "Information")
+    }
+})
 
-        function populateTable(data) {
-            const tbody = document.querySelector("#tableBody");
-            tbody.innerHTML = "";
-            
-            if (data.length === 0) {
-                tbody.innerHTML = '<div class="no-data">No entries match your search criteria</div>';
-                return;
-            }
+$Window.Add_Loaded({
+    Update-List
+})
 
-            data.forEach((entry, index) => {
-                const row = document.createElement("div");
-                row.className = "table-row";
-                row.innerHTML = `
-                    <div class="table-cell timestamp">${entry.time}</div>
-                    <div class="table-cell file-path">${entry.path}</div>
-                    <div class="table-cell">
-                        <span class="signature ${getSignatureClass(entry.signature)}">${entry.signature}</span>
-                    </div>
-                    <div class="table-cell file-name">${entry.fileName}</div>
-                `;
-                tbody.appendChild(row);
-            });
-        }
+$Window.Add_KeyDown({
+    if ($_.Key -eq 'Escape') {
+        $Window.Close()
+    }
+})
 
-        function applyFilters() {
-            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
-            
-            if (searchTerm) {
-                filteredEntries = entries.filter((entry) =>
-                    Object.values(entry).some((value) =>
-                        value.toLowerCase().includes(searchTerm)
-                    )
-                );
-            } else {
-                filteredEntries = [...entries];
-            }
-
-            filteredEntries.sort((a, b) => {
-                const aValue = a[currentSort.column];
-                const bValue = b[currentSort.column];
-                if (currentSort.direction === "asc") {
-                    return aValue.localeCompare(bValue);
-                } else {
-                    return bValue.localeCompare(aValue);
-                }
-            });
-
-            populateTable(filteredEntries);
-            updateSortIndicators();
-        }
-
-        function updateSortIndicators() {
-            document.querySelectorAll(".table-header-cell").forEach((th) => {
-                th.classList.remove("asc", "desc", "sorted");
-                if (th.dataset.sort === currentSort.column) {
-                    th.classList.add("sorted", currentSort.direction);
-                }
-            });
-        }
-
-        document.getElementById("searchInput").addEventListener("input", applyFilters);
-
-        document.querySelectorAll(".table-header-cell").forEach((th) => {
-            th.addEventListener("click", () => {
-                const column = th.dataset.sort;
-                if (currentSort.column === column) {
-                    currentSort.direction = currentSort.direction === "asc" ? "desc" : "asc";
-                } else {
-                    currentSort.column = column;
-                    currentSort.direction = "asc";
-                }
-                applyFilters();
-            });
-        });
-
-        document.addEventListener('DOMContentLoaded', function() {
-            updateStats();
-            applyFilters();
-        });
-    </script>
-</body>
-</html>
-'@
-
-$htmlFilePath = Join-Path $env:TEMP "BAM_Forensic_Analysis.html"
-$ContenidoHtml | Out-File -FilePath $htmlFilePath -Encoding UTF8
-
-Start-Process $htmlFilePath
+$Window.ShowDialog() | Out-Null
