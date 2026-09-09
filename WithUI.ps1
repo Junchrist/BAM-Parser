@@ -194,6 +194,7 @@ $XAML = @"
         <Style TargetType="ListBoxItem">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="Padding" Value="5"/>
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="#1A1A1A"/>
@@ -228,7 +229,7 @@ $XAML = @"
         </Grid.RowDefinitions>
 
         <StackPanel Grid.Row="0" Margin="0,0,0,10" HorizontalAlignment="Center">
-            <TextBlock FontSize="14" Foreground="#888888" TextAlignment="Center" FontFamily="Consolas">
+            <TextBlock FontSize="12" Foreground="#888888" TextAlignment="Center" FontFamily="Consolas">
                         d8b                           d8,                
                         ?88                          `8P            d8P  
                          88b                                     d888888P
@@ -290,7 +291,27 @@ d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P
             </Border>
         </Grid>
 
-        <ListBox Grid.Row="3" x:Name="DataList" Margin="0,0,0,10" />
+        <ListBox Grid.Row="3" x:Name="DataList" Margin="0,0,0,10">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <Grid x:Name="ItemGrid">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="180"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="180"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock x:Name="TimeBlock" Grid.Column="0" Foreground="#FFFFFF" FontSize="12" Text="{Binding Time}"/>
+                        <TextBlock x:Name="PathBlock" Grid.Column="1" Foreground="#AAAAAA" FontSize="12" TextWrapping="Wrap" Text="{Binding Path}"/>
+                        <Border x:Name="SigBorder" Grid.Column="2" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,2" HorizontalAlignment="Left">
+                            <TextBlock x:Name="SigBlock" FontSize="10" FontWeight="Bold" TextAlignment="Center" Text="{Binding Signature}"/>
+                        </Border>
+                        <TextBlock x:Name="FileBlock" Grid.Column="3" Foreground="#CCCCCC" FontSize="12" FontWeight="Bold" Text="{Binding FileName}"/>
+                    </Grid>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
         <Border Grid.Row="4" Background="#0A0A0A" BorderBrush="#333333" BorderThickness="1" Padding="10">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -326,7 +347,6 @@ $SearchBox.Text = "Search files, paths, timestamps, or signatures..."
 $SearchBox.Foreground = "#666666"
 
 $allData = New-Object System.Collections.ArrayList
-$displayData = New-Object System.Collections.ArrayList
 
 foreach ($entry in $Bam) {
     $sigColor = "#FFFFFF"
@@ -389,7 +409,6 @@ function Update-List {
         $filtered = $allData
     }
     
-    $displayData = $filtered
     $DataList.ItemsSource = $filtered
     
     $total = 0
@@ -413,9 +432,11 @@ function Update-List {
     $SuspiciousCount.Text = $suspicious
     $UnsignedCount.Text = $unsigned
     $DeletedCount.Text = $deleted
+    
+    Update-ItemColors
 }
 
-function Update-DataListItems {
+function Update-ItemColors {
     $items = $DataList.ItemsSource
     if ($items -eq $null) { return }
     
@@ -425,23 +446,16 @@ function Update-DataListItems {
         if ($container -ne $null) {
             $grid = $container.ContentTemplate.FindName("ItemGrid", $container)
             if ($grid -ne $null) {
-                $timeBlock = $grid.FindName("TimeBlock")
-                $pathBlock = $grid.FindName("PathBlock")
                 $sigBorder = $grid.FindName("SigBorder")
                 $sigBlock = $grid.FindName("SigBlock")
-                $fileBlock = $grid.FindName("FileBlock")
                 
-                if ($timeBlock) { $timeBlock.Text = $item.Time }
-                if ($pathBlock) { $pathBlock.Text = $item.Path }
                 if ($sigBorder) { 
                     $sigBorder.Background = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigBg)))
                     $sigBorder.BorderBrush = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigBorder)))
                 }
                 if ($sigBlock) { 
-                    $sigBlock.Text = $item.Signature
                     $sigBlock.Foreground = [System.Windows.Media.Brush]::new([System.Windows.Media.SolidColorBrush]::new([System.Windows.Media.ColorConverter]::ConvertFromString($item.SigColor)))
                 }
-                if ($fileBlock) { $fileBlock.Text = $item.FileName }
             }
         }
     }
