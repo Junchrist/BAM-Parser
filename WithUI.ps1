@@ -1,179 +1,62 @@
-$ErrorActionPreference = "SilentlyContinue"
-
-Clear-Host
-
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+cls
 
 Write-Host ""
 Write-Host @"
-    ▄████████ ███    █▄   ▄████████    ▄█    █▄       ▄████████    ▄████████  ▄█     ▄████████     ███     
-  ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███    ███    ███ ▀█████████▄ 
-  ███    ▀  ███    ███ ███    █▀    ███    ███     ███    ███   ███    ███ ███▌   ███    █▀     ▀███▀▀██ 
- ▄███▄▄▄     ███    ███ ███         ▄███▄▄▄▄███▄▄   ███    ███  ▄███▄▄▄▄██▀ ███▌   ███            ███   ▀ 
-▀▀███▀▀▀     ███    ███ ███        ▀▀███▀▀▀▀███▀  ▀███████████ ▀▀███▀▀▀▀▀   ███▌ ▀███████████     ███     
-  ███    █▄  ███    ███ ███    █▄    ███    ███     ███    ███ ▀███████████ ███           ███     ███     
-  ███    ███ ███    ███ ███    ███   ███    ███     ███    ███   ███    ███ ███     ▄█    ███     ███     
-  ██████████ ████████▀  ████████▀    ███    █▀      ███    █▀    ███    ███ █▀    ▄████████▀     ▄████▀   
-                                                                 ███    ███                                
-"@ -ForegroundColor White
-
+.dP' dP"Yb.             `Yb.            db                                       
+dP'    `b   'Yb             `Yb        db    db             db                     
+                              Yb                                                   
+ 'Yb      'Yb   .dP'  dP'      Yb        'Yb    `Yb    dP' 'Yb .d888b.  `Yb.d888b  
+  88       88   88    88      dPYb        88      Yb  dP    88 8'   `Yb  88'    8Y 
+  88       88   Y8   .88    ,dP  Yb       88       YbdP     88 Yb.   88  88     8P 
+ .8P      .8P   `Y88P'88  .dP'    `Yb.   .8P       .8P     .8P     .dP   88   ,dP  
+                      88                         dP'  b          .dP'    88        
+                      88                         Y.  ,P        .dP'      88        
+                      Y8.                         `""'                  .8P        
+"@ -ForegroundColor Red
 Write-Host ""
-Write-Host "                                 Made by @junchrist on Discord" -ForegroundColor White
+Write-Host "                                 made by @junchrist on Discord"
 Write-Host ""
 
-function Test-Admin {
-    $currentUser = New-Object Security.Principal.WindowsPrincipal(
-        [Security.Principal.WindowsIdentity]::GetCurrent()
-    )
-
-    return $currentUser.IsInRole(
-        [Security.Principal.WindowsBuiltinRole]::Administrator
-    )
-}
-
-if (-not (Test-Admin)) {
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {  
     Write-Warning "This script requires Administrator privileges. Please run as Administrator."
-    Read-Host "Press Enter to exit"
     exit
 }
 
-function Get-Signature {
-    [CmdletBinding()]
-    param (
-        [string]$FilePath
-    )
-
-    if ([string]::IsNullOrWhiteSpace($FilePath)) {
-        return "File Was Not Found"
-    }
-
-    if (-not (Test-Path -LiteralPath $FilePath -PathType Leaf)) {
-        return "File Was Not Found"
-    }
-
-    try {
-        $Authenticode = (
-            Get-AuthenticodeSignature `
-                -FilePath $FilePath `
-                -ErrorAction SilentlyContinue
-        ).Status
-    }
-    catch {
-        return "Invalid Signature (UnknownError)"
-    }
-
-    switch ($Authenticode) {
-        "Valid" {
-            return "Valid Signature"
-        }
-
-        "NotSigned" {
-            return "Invalid Signature (NotSigned)"
-        }
-
-        "HashMismatch" {
-            return "Invalid Signature (HashMismatch)"
-        }
-
-        "NotTrusted" {
-            return "Invalid Signature (NotTrusted)"
-        }
-
-        "UnknownError" {
-            return "Invalid Signature (UnknownError)"
-        }
-
-        default {
-            return "Invalid Signature (UnknownError)"
-        }
+function Get-OldestConnectTime {
+    $oldestLogon = Get-CimInstance -ClassName Win32_LogonSession | 
+        Where-Object {$_.LogonType -eq 2 -or $_.LogonType -eq 10} | 
+        Sort-Object -Property StartTime | 
+        Select-Object -First 1
+    if ($oldestLogon) {
+        return $oldestLogon.StartTime
+    } else {
+        return $null
     }
 }
 
 function Get-DeviceMappings {
-
-    $DynAssembly = New-Object System.Reflection.AssemblyName('BamDeviceMapping')
-
-    $AssemblyBuilder = [AppDomain]::CurrentDomain.DefineDynamicAssembly(
-        $DynAssembly,
-        [Reflection.Emit.AssemblyBuilderAccess]::Run
-    )
-
-    $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule(
-        'BamDeviceMapping',
-        $False
-    )
-
-    $TypeBuilder = $ModuleBuilder.DefineType(
-        'Kernel32',
-        'Public, Class'
-    )
-
-    $PInvokeMethod = $TypeBuilder.DefinePInvokeMethod(
-        'QueryDosDevice',
-        'kernel32.dll',
-        ([Reflection.MethodAttributes]::Public -bor
-         [Reflection.MethodAttributes]::Static),
-        [Reflection.CallingConventions]::Standard,
-        [UInt32],
-        [Type[]]@(
-            [String],
-            [Text.StringBuilder],
-            [UInt32]
-        ),
-        [Runtime.InteropServices.CallingConvention]::Winapi,
-        [Runtime.InteropServices.CharSet]::Auto
-    )
-
-    $DllImportConstructor =
-        [Runtime.InteropServices.DllImportAttribute].GetConstructor(
-            @([String])
-        )
-
-    $SetLastError =
-        [Runtime.InteropServices.DllImportAttribute].GetField(
-            'SetLastError'
-        )
-
-    $CustomAttribute =
-        New-Object Reflection.Emit.CustomAttributeBuilder(
-            $DllImportConstructor,
-            @('kernel32.dll'),
-            [Reflection.FieldInfo[]]@($SetLastError),
-            @($true)
-        )
-
-    $PInvokeMethod.SetCustomAttribute($CustomAttribute)
-
+    $DynAssembly = New-Object System.Reflection.AssemblyName('SysUtils')
+    $AssemblyBuilder = [AppDomain]::CurrentDomain.DefineDynamicAssembly($DynAssembly, [Reflection.Emit.AssemblyBuilderAccess]::Run)
+    $ModuleBuilder = $AssemblyBuilder.DefineDynamicModule('SysUtils', $False)
+    $TypeBuilder = $ModuleBuilder.DefineType('Kernel32', 'Public, Class')
+    $PInvokeMethod = $TypeBuilder.DefinePInvokeMethod('QueryDosDevice', 'kernel32.dll', ([Reflection.MethodAttributes]::Public -bor [Reflection.MethodAttributes]::Static), [Reflection.CallingConventions]::Standard, [UInt32], [Type[]]@([String], [Text.StringBuilder], [UInt32]), [Runtime.InteropServices.CallingConvention]::Winapi, [Runtime.InteropServices.CharSet]::Auto)
+    $DllImportConstructor = [Runtime.InteropServices.DllImportAttribute].GetConstructor(@([String]))
+    $SetLastError = [Runtime.InteropServices.DllImportAttribute].GetField('SetLastError')
+    $SetLastErrorCustomAttribute = New-Object Reflection.Emit.CustomAttributeBuilder($DllImportConstructor, @('kernel32.dll'), [Reflection.FieldInfo[]]@($SetLastError), @($true))
+    $PInvokeMethod.SetCustomAttribute($SetLastErrorCustomAttribute)
     $Kernel32 = $TypeBuilder.CreateType()
-
-    $Mappings = @()
-
-    $Volumes = Get-CimInstance Win32_Volume |
-        Where-Object {
-            $_.DriveLetter
-        }
-
-    foreach ($Volume in $Volumes) {
-
-        $StringBuilder = New-Object System.Text.StringBuilder(65536)
-
-        $ReturnLength = $Kernel32::QueryDosDevice(
-            $Volume.DriveLetter,
-            $StringBuilder,
-            65536
-        )
-
+    $Max = 65536
+    $StringBuilder = New-Object System.Text.StringBuilder($Max)
+    $driveMappings = Get-WmiObject Win32_Volume | Where-Object { $_.DriveLetter } | ForEach-Object {
+        $ReturnLength = $Kernel32::QueryDosDevice($_.DriveLetter, $StringBuilder, $Max)
         if ($ReturnLength) {
-
-            $Mappings += [PSCustomObject]@{
-                DriveLetter = $Volume.DriveLetter
-                DevicePath  = $StringBuilder.ToString().ToLower()
+            @{
+                DriveLetter = $_.DriveLetter
+                DevicePath = $StringBuilder.ToString().ToLower()
             }
         }
     }
-
-    return $Mappings
+    return $driveMappings
 }
 
 function Convert-DevicePathToDriveLetter {
@@ -181,1009 +64,727 @@ function Convert-DevicePathToDriveLetter {
         [string]$DevicePath,
         $DeviceMappings
     )
-
-    if ([string]::IsNullOrWhiteSpace($DevicePath)) {
-        return $DevicePath
-    }
-
-    foreach ($Mapping in $DeviceMappings) {
-
-        if ($DevicePath.ToLower().StartsWith(
-            $Mapping.DevicePath.ToLower()
-        )) {
-
-            return $DevicePath -replace `
-                [regex]::Escape($Mapping.DevicePath),
-                $Mapping.DriveLetter
+    foreach ($mapping in $DeviceMappings) {
+        if ($DevicePath -like ($mapping.DevicePath + "*")) {
+            return $DevicePath -replace [regex]::Escape($mapping.DevicePath), $mapping.DriveLetter
         }
     }
-
     return $DevicePath
 }
 
-function Get-OldestConnectTime {
-
-    $oldestLogon = Get-CimInstance `
-        -ClassName Win32_LogonSession `
-        -ErrorAction SilentlyContinue |
-        Where-Object {
-            $_.LogonType -eq 2 -or
-            $_.LogonType -eq 10
-        } |
-        Sort-Object StartTime |
-        Select-Object -First 1
-
-    if ($oldestLogon) {
-        return $oldestLogon.StartTime
+function Get-FileSignature {
+    param (
+        [string]$FilePath
+    )
+    if (Test-Path $FilePath) {
+        $signature = Get-AuthenticodeSignature -FilePath $FilePath
+        if ($signature.Status -eq 'Valid') {
+            if ($signature.SignerCertificate.Subject -like "*Manthe Industries, LLC*") {
+                return "Suspicious"
+            }
+            if ($signature.SignerCertificate.Subject -like "*Slinkware*") {
+                return "Suspicious"
+            } else {
+                return "Verified"
+            }
+        } else {
+            return "Unsigned"
+        }
+    } else {
+        return "Deleted"
     }
-
-    return $null
 }
 
 $oldestConnectTime = Get-OldestConnectTime
 $deviceMappings = Get-DeviceMappings
 
-if (-not (Get-PSDrive -Name HKLM -PSProvider Registry)) {
+$ErrorActionPreference = 'SilentlyContinue'
 
-    try {
-        New-PSDrive `
-            -Name HKLM `
-            -PSProvider Registry `
-            -Root HKEY_LOCAL_MACHINE |
-            Out-Null
-    }
-    catch {
-        Write-Warning "Unable to mount HKEY_LOCAL_MACHINE."
-        exit
-    }
+if (!(Get-PSDrive -Name HKLM -PSProvider Registry)){
+    Try{New-PSDrive -Name HKLM -PSProvider Registry -Root HKEY_LOCAL_MACHINE}
+    Catch{}
 }
 
-$bv = @(
-    "bam",
-    "bam\State"
-)
-
+$bv = ("bam", "bam\State")
 $Users = @()
-
-foreach ($ii in $bv) {
-
-    $Path =
-        "HKLM:\SYSTEM\CurrentControlSet\Services\$ii\UserSettings"
-
-    if (Test-Path $Path) {
-
-        $Users += Get-ChildItem `
-            -Path $Path `
-            -ErrorAction SilentlyContinue |
-            Select-Object -ExpandProperty PSChildName
-    }
+foreach($ii in $bv){
+    $Users += Get-ChildItem -Path "HKLM:\SYSTEM\CurrentControlSet\Services\$($ii)\UserSettings\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty PSChildName
 }
 
-$Users = $Users |
-    Where-Object {
-        $_ -match '^S-\d-\d+-.+'
-    } |
-    Sort-Object -Unique
-
-if (-not $Users -or $Users.Count -eq 0) {
-
-    Write-Host "No BAM data found." -ForegroundColor Yellow
-    Read-Host "Press Enter to exit"
+if ($Users.Count -eq 0) {
     exit
 }
 
-$rpath = @(
-    "HKLM:\SYSTEM\CurrentControlSet\Services\bam\",
-    "HKLM:\SYSTEM\CurrentControlSet\Services\bam\state\"
-)
+$rpath = @("HKLM:\SYSTEM\CurrentControlSet\Services\bam\","HKLM:\SYSTEM\CurrentControlSet\Services\bam\state\")
 
-$UserTime = (
-    Get-ItemProperty `
-        -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation"
-).TimeZoneKeyName
-
-$UserBias = (
-    Get-ItemProperty `
-        -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation"
-).ActiveTimeBias
-
-$UserDay = (
-    Get-ItemProperty `
-        -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation"
-).DaylightBias
+$UserTime = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).TimeZoneKeyName
+$UserBias = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).ActiveTimeBias
+$UserDay = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" -ErrorAction SilentlyContinue).DaylightBias
 
 $Bam = @()
-
-foreach ($Sid in $Users) {
-
-    try {
-
-        $objSID = New-Object `
-            System.Security.Principal.SecurityIdentifier($Sid)
-
-        $User = $objSID.Translate(
-            [System.Security.Principal.NTAccount]
-        )
-
-        $User = $User.Value
-    }
-    catch {
-
-        $User = ""
-    }
-
-    foreach ($rp in $rpath) {
-
-        $UserSettingsPath =
-            "$($rp)UserSettings\$Sid"
-
-        if (-not (Test-Path $UserSettingsPath)) {
-            continue
+Foreach ($Sid in $Users) {
+    foreach($rp in $rpath){
+        $BamItems = Get-Item -Path "$($rp)UserSettings\$Sid" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Property
+        
+        Try{
+            $objSID = New-Object System.Security.Principal.SecurityIdentifier($Sid)
+            $User = $objSID.Translate( [System.Security.Principal.NTAccount]) 
+            $User = $User.Value
         }
-
-        $BamItems =
-            Get-Item `
-                -Path $UserSettingsPath `
-                -ErrorAction SilentlyContinue |
-                Select-Object -ExpandProperty Property
-
-        foreach ($Item in $BamItems) {
-
-            $Key =
-                Get-ItemProperty `
-                    -Path $UserSettingsPath `
-                    -ErrorAction SilentlyContinue |
-                    Select-Object -ExpandProperty $Item
-
-            if (-not $Key) {
-                continue
-            }
-
-            if ($Key.Length -ne 24) {
-                continue
-            }
-
-            try {
-
-                $Hex =
-                    [System.BitConverter]::ToString(
-                        $Key[7..0]
-                    ) -replace "-", ""
-
-                $FileTime =
-                    [Convert]::ToInt64(
-                        $Hex,
-                        16
-                    )
-
-                $TimeUtc =
-                    [DateTime]::FromFileTimeUtc(
-                        $FileTime
-                    )
-
-                $TimeUser =
-                    $TimeUtc.ToLocalTime()
-
-                if (
-                    $oldestConnectTime -and
-                    $TimeUser -lt $oldestConnectTime
-                ) {
-                    continue
+        Catch{$User=""}
+        
+        ForEach ($Item in $BamItems){
+            $Key = Get-ItemProperty -Path "$($rp)UserSettings\$Sid" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty $Item
+    
+            If($key.length -eq 24){
+                $Hex=[System.BitConverter]::ToString($key[7..0]) -replace "-",""
+                $Bias = -([convert]::ToInt32([Convert]::ToString($UserBias,2),2))
+                $TimeUser = (Get-Date ([DateTime]::FromFileTimeUtc([Convert]::ToInt64($Hex, 16))).addminutes($Bias) -Format "yyyy-MM-dd HH:mm:ss") 
+                
+                if ([DateTime]::ParseExact($TimeUser, "yyyy-MM-dd HH:mm:ss", $null) -ge $oldestConnectTime) {
+                    $f = if((((split-path -path $item) | ConvertFrom-String -Delimiter "\\").P3)-match '\d{1}')
+                    {Split-path -leaf ($item).TrimStart()} else {$item}
+                    
+                    $path = Convert-DevicePathToDriveLetter -DevicePath $item -DeviceMappings $deviceMappings
+                    
+                    $signature = Get-FileSignature -FilePath $path
+                    
+                    $Bam += [PSCustomObject]@{
+                        'Last Execution User Time' = $TimeUser
+                        Path = $path
+                        'Digital Signature' = $signature
+                        'File Name' = $f
+                    }
                 }
-
-                $TimeLocalString =
-                    $TimeUser.ToString(
-                        "yyyy-MM-dd HH:mm:ss"
-                    )
-
-                $TimeUtcString =
-                    $TimeUtc.ToString(
-                        "yyyy-MM-dd HH:mm:ss"
-                    )
-
-                $Path =
-                    Convert-DevicePathToDriveLetter `
-                        -DevicePath $Item `
-                        -DeviceMappings $deviceMappings
-
-                $FileName =
-                    Split-Path `
-                        -Path $Path `
-                        -Leaf `
-                        -ErrorAction SilentlyContinue
-
-                if ([string]::IsNullOrWhiteSpace($FileName)) {
-                    $FileName = Split-Path `
-                        -Path $Item `
-                        -Leaf `
-                        -ErrorAction SilentlyContinue
-                }
-
-                $Signature = Get-Signature `
-                    -FilePath $Path
-
-                $Bam += [PSCustomObject]@{
-
-                    'Execution Time' =
-                        $TimeLocalString
-
-                    'Execution UTC' =
-                        $TimeUtcString
-
-                    'User Execution Time' =
-                        $TimeLocalString
-
-                    'File Path' =
-                        $Path
-
-                    'Signature Status' =
-                        $Signature
-
-                    'File Name' =
-                        $FileName
-
-                    'User' =
-                        $User
-
-                    'SID' =
-                        $Sid
-
-                    'Registry Path' =
-                        $UserSettingsPath
-                }
-            }
-            catch {
             }
         }
     }
 }
 
-$Bam = @(
-    $Bam |
-        Sort-Object 'Execution Time' -Descending
-)
-
-if ($Bam.Count -eq 0) {
-
-    Write-Host "No BAM entries found." -ForegroundColor Yellow
-    Read-Host "Press Enter to exit"
-    exit
-}
-
-function Show-CustomGUI {
-
-    $Form = New-Object System.Windows.Forms.Form
-
-    $Form.Text =
-        "BAM Forensic Analysis | Junchrist"
-
-    $Form.StartPosition =
-        "CenterScreen"
-
-    $Form.Size =
-        New-Object System.Drawing.Size(1500, 900)
-
-    $Form.MinimumSize =
-        New-Object System.Drawing.Size(1100, 700)
-
-    $Form.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            10, 10, 15
-        )
-
-    $Form.ForeColor =
-        [System.Drawing.Color]::White
-
-    $Form.Font =
-        New-Object System.Drawing.Font(
-            "Segoe UI",
-            9
-        )
-
-    $Form.AutoScroll = $false
-
-    $HeaderPanel =
-        New-Object System.Windows.Forms.Panel
-
-    $HeaderPanel.Dock = "Top"
-    $HeaderPanel.Height = 145
-    $HeaderPanel.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            21, 21, 32
-        )
-
-    $Form.Controls.Add($HeaderPanel)
-
-    $TopLine =
-        New-Object System.Windows.Forms.Panel
-
-    $TopLine.Dock = "Top"
-    $TopLine.Height = 3
-    $TopLine.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            99, 102, 241
-        )
-
-    $HeaderPanel.Controls.Add($TopLine)
-
-    $Title =
-        New-Object System.Windows.Forms.Label
-
-    $Title.Text =
-        "BAM FORENSIC ANALYSIS"
-
-    $Title.Font =
-        New-Object System.Drawing.Font(
-            "Segoe UI",
-            22,
-            [System.Drawing.FontStyle]::Bold
-        )
-
-    $Title.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            139, 92, 246
-        )
-
-    $Title.AutoSize = $true
-    $Title.Location =
-        New-Object System.Drawing.Point(
-            30,
-            30
-        )
-
-    $HeaderPanel.Controls.Add($Title)
-
-    $Subtitle =
-        New-Object System.Windows.Forms.Label
-
-    $Subtitle.Text =
-        "Windows Background Activity Moderator execution analysis"
-
-    $Subtitle.Font =
-        New-Object System.Drawing.Font(
-            "Segoe UI",
-            10
-        )
-
-    $Subtitle.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            203, 213, 225
-        )
-
-    $Subtitle.AutoSize = $true
-    $Subtitle.Location =
-        New-Object System.Drawing.Point(
-            32,
-            75
-        )
-
-    $HeaderPanel.Controls.Add($Subtitle)
-
-    $Author =
-        New-Object System.Windows.Forms.Label
-
-    $Author.Text =
-        "Made by @junchrist on Discord"
-
-    $Author.Font =
-        New-Object System.Drawing.Font(
-            "Segoe UI",
-            9
-        )
-
-    $Author.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            100, 116, 139
-        )
-
-    $Author.AutoSize = $true
-    $Author.Location =
-        New-Object System.Drawing.Point(
-            32,
-            103
-        )
-
-    $HeaderPanel.Controls.Add($Author)
-
-    $StatsPanel =
-        New-Object System.Windows.Forms.Panel
-
-    $StatsPanel.Dock = "Top"
-    $StatsPanel.Height = 85
-
-    $StatsPanel.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            15, 15, 23
-        )
-
-    $Form.Controls.Add($StatsPanel)
-
-    function Add-Stat {
-        param (
-            [string]$Text,
-            [string]$LabelText,
-            [int]$X,
-            [System.Drawing.Color]$TextColor
-        )
-
-        $Value =
-            New-Object System.Windows.Forms.Label
-
-        $Value.Text = $Text
-
-        $Value.Font =
-            New-Object System.Drawing.Font(
-                "Consolas",
-                18,
-                [System.Drawing.FontStyle]::Bold
-            )
-
-        $Value.ForeColor = $TextColor
-        $Value.AutoSize = $true
-
-        $Value.Location =
-            New-Object System.Drawing.Point(
-                $X,
-                10
-            )
-
-        $StatsPanel.Controls.Add($Value)
-
-        $Label =
-            New-Object System.Windows.Forms.Label
-
-        $Label.Text = $LabelText
-
-        $Label.Font =
-            New-Object System.Drawing.Font(
-                "Segoe UI",
-                8
-            )
-
-        $Label.ForeColor =
-            [System.Drawing.Color]::FromArgb(
-                100, 116, 139
-            )
-
-        $Label.AutoSize = $true
-
-        $Label.Location =
-            New-Object System.Drawing.Point(
-                $X,
-                42
-            )
-
-        $StatsPanel.Controls.Add($Label)
-    }
-
-    $Total =
-        @($Bam).Count
-
-    $Valid =
-        @(
-            $Bam |
-                Where-Object {
-                    $_.'Signature Status' -eq
-                    "Valid Signature"
-                }
-        ).Count
-
-    $NotSigned =
-        @(
-            $Bam |
-                Where-Object {
-                    $_.'Signature Status' -eq
-                    "Invalid Signature (NotSigned)"
-                }
-        ).Count
-
-    $Invalid =
-        @(
-            $Bam |
-                Where-Object {
-                    $_.'Signature Status' -match
-                    "HashMismatch|NotTrusted"
-                }
-        ).Count
-
-    $Missing =
-        @(
-            $Bam |
-                Where-Object {
-                    $_.'Signature Status' -eq
-                    "File Was Not Found"
-                }
-        ).Count
-
-    Add-Stat `
-        -Text $Total `
-        -LabelText "TOTAL ENTRIES" `
-        -X 35 `
-        -TextColor ([System.Drawing.Color]::FromArgb(
-            139, 92, 246
-        ))
-
-    Add-Stat `
-        -Text $Valid `
-        -LabelText "VALID" `
-        -X 190 `
-        -TextColor ([System.Drawing.Color]::FromArgb(
-            16, 185, 129
-        ))
-
-    Add-Stat `
-        -Text $NotSigned `
-        -LabelText "NOT SIGNED" `
-        -X 320 `
-        -TextColor ([System.Drawing.Color]::FromArgb(
-            245, 158, 11
-        ))
-
-    Add-Stat `
-        -Text $Invalid `
-        -LabelText "INVALID" `
-        -X 480 `
-        -TextColor ([System.Drawing.Color]::FromArgb(
-            239, 68, 68
-        ))
-
-    Add-Stat `
-        -Text $Missing `
-        -LabelText "FILE NOT FOUND" `
-        -X 620 `
-        -TextColor ([System.Drawing.Color]::FromArgb(
-            100, 116, 139
-        ))
-
-    $ControlPanel =
-        New-Object System.Windows.Forms.Panel
-
-    $ControlPanel.Dock = "Top"
-    $ControlPanel.Height = 70
-
-    $ControlPanel.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            21, 21, 32
-        )
-
-    $Form.Controls.Add($ControlPanel)
-
-    $Search =
-        New-Object System.Windows.Forms.TextBox
-
-    $Search.Font =
-        New-Object System.Drawing.Font(
-            "Segoe UI",
-            10
-        )
-
-    $Search.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            248, 250, 252
-        )
-
-    $Search.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            10, 10, 15
-        )
-
-    $Search.BorderStyle = "FixedSingle"
-
-    $Search.Location =
-        New-Object System.Drawing.Point(
-            30,
-            18
-        )
-
-    $Search.Size =
-        New-Object System.Drawing.Size(
-            600,
-            32
-        )
-
-    $Search.Text =
-        "Search files, paths, timestamps, or signatures..."
-
-    $Search.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            100, 116, 139
-        )
-
-    $ControlPanel.Controls.Add($Search)
-
-    $Search.Add_GotFocus({
-
-        if (
-            $Search.Text -eq
-            "Search files, paths, timestamps, or signatures..."
-        ) {
-
-            $Search.Text = ""
-
-            $Search.ForeColor =
-                [System.Drawing.Color]::White
-        }
-    })
-
-    $Search.Add_LostFocus({
-
-        if ([string]::IsNullOrWhiteSpace($Search.Text)) {
-
-            $Search.Text =
-                "Search files, paths, timestamps, or signatures..."
-
-            $Search.ForeColor =
-                [System.Drawing.Color]::FromArgb(
-                    100, 116, 139
-                )
-        }
-    })
-
-    $TablePanel =
-        New-Object System.Windows.Forms.Panel
-
-    $TablePanel.Dock = "Fill"
-
-    $TablePanel.Padding =
-        New-Object System.Windows.Forms.Padding(
-            30, 20, 30, 20
-        )
-
-    $TablePanel.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            10, 10, 15
-        )
-
-    $Form.Controls.Add($TablePanel)
-
-    $ListView =
-        New-Object System.Windows.Forms.ListView
-
-    $ListView.Dock = "Fill"
-
-    $ListView.View = "Details"
-
-    $ListView.FullRowSelect = $true
-
-    $ListView.GridLines = $false
-
-    $ListView.HideSelection = $false
-
-    $ListView.MultiSelect = $false
-
-    $ListView.OwnerDraw = $true
-
-    $ListView.Font =
-        New-Object System.Drawing.Font(
-            "Consolas",
-            9
-        )
-
-    $ListView.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            21, 21, 32
-        )
-
-    $ListView.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            248, 250, 252
-        )
-
-    [void]$ListView.Columns.Add(
-        "Execution Time",
-        170
-    )
-
-    [void]$ListView.Columns.Add(
-        "File Path",
-        500
-    )
-
-    [void]$ListView.Columns.Add(
-        "Signature Status",
-        250
-    )
-
-    [void]$ListView.Columns.Add(
-        "File Name",
-        260
-    )
-
-    $TablePanel.Controls.Add($ListView)
-
-    $ListView.Add_DrawColumnHeader({
-
-        param($Sender, $Event)
-
-        $Event.Graphics.FillRectangle(
-            (New-Object System.Drawing.SolidBrush(
-                [System.Drawing.Color]::FromArgb(
-                    30, 30, 46
-                )
-            )),
-            $Event.Bounds
-        )
-
-        $Event.Graphics.DrawString(
-            $Event.Header.Text,
-            (New-Object System.Drawing.Font(
-                "Segoe UI",
-                8,
-                [System.Drawing.FontStyle]::Bold
-            )),
-            (New-Object System.Drawing.SolidBrush(
-                [System.Drawing.Color]::FromArgb(
-                    139, 92, 246
-                )
-            )),
-            $Event.Bounds.X + 10,
-            $Event.Bounds.Y + 10
-        )
-    })
-
-    $ListView.Add_DrawItem({
-
-        param($Sender, $Event)
-
-        if ($Event.ItemIndex % 2 -eq 0) {
-
-            $Event.Graphics.FillRectangle(
-                (New-Object System.Drawing.SolidBrush(
-                    [System.Drawing.Color]::FromArgb(
-                        21, 21, 32
-                    )
-                )),
-                $Event.Bounds
-            )
-        }
-        else {
-
-            $Event.Graphics.FillRectangle(
-                (New-Object System.Drawing.SolidBrush(
-                    [System.Drawing.Color]::FromArgb(
-                        18, 18, 28
-                    )
-                )),
-                $Event.Bounds
-            )
+$ErrorActionPreference = 'Continue'
+
+$ContenidoHtml = @'
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BAM Forensic Analysis | JunChrist</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #151520;
+            --bg-tertiary: #1e1e2e;
+            --accent-primary: #6366f1;
+            --accent-secondary: #8b5cf6;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+            --border: #2d3748;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --suspicious: #dc2626;
         }
 
-        if ($Event.Item.Selected) {
-
-            $Event.Graphics.FillRectangle(
-                (New-Object System.Drawing.SolidBrush(
-                    [System.Drawing.Color]::FromArgb(
-                        45, 38, 75
-                    )
-                )),
-                $Event.Bounds
-            )
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-    })
 
-    $ListView.Add_DrawSubItem({
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #1a1a2e 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
 
-        param($Sender, $Event)
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
 
-        $TextColor =
-            [System.Drawing.Color]::FromArgb(
-                203, 213, 225
-            )
+        .header {
+            background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 2.5rem 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
 
-        if ($Event.ColumnIndex -eq 2) {
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+        }
 
-            switch -Regex ($Event.SubItem.Text) {
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--accent-primary);
+            font-size: 0.75rem;
+            line-height: 1.3;
+            margin-bottom: 1.5rem;
+            white-space: pre;
+            opacity: 0.9;
+        }
 
-                "^Valid Signature$" {
-                    $TextColor =
-                        [System.Drawing.Color]::FromArgb(
-                            16, 185, 129
-                        )
-                }
+        .title {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
 
-                "NotSigned" {
-                    $TextColor =
-                        [System.Drawing.Color]::FromArgb(
-                            245, 158, 11
-                        )
-                }
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 400;
+            opacity: 0.8;
+        }
 
-                "HashMismatch|NotTrusted" {
-                    $TextColor =
-                        [System.Drawing.Color]::FromArgb(
-                            239, 68, 68
-                        )
-                }
+        .stats-bar {
+            background: var(--bg-secondary);
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border);
+        }
 
-                "UnknownError" {
-                    $TextColor =
-                        [System.Drawing.Color]::FromArgb(
-                            245, 158, 11
-                        )
-                }
+        .stats-container {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
 
-                "File Was Not Found" {
-                    $TextColor =
-                        [System.Drawing.Color]::FromArgb(
-                            100, 116, 139
-                        )
-                }
+        .stat-item {
+            text-align: center;
+            padding: 0.5rem 1rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .controls {
+            background: var(--bg-secondary);
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .search-box {
+            position: relative;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.75rem 1rem 0.75rem 3rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            width: 16px;
+            height: 16px;
+        }
+
+        .table-section {
+            padding: 2rem 0;
+        }
+
+        .data-table {
+            width: 100%;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .table-header {
+            background: linear-gradient(135deg, var(--bg-tertiary) 0%, #252542 100%);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .table-header-row {
+            display: grid;
+            grid-template-columns: 200px 1fr 150px 180px;
+            gap: 1px;
+        }
+
+        .table-header-cell {
+            padding: 1.25rem 1rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .table-header-cell:hover {
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .table-header-cell.sorted::after {
+            content: '↕';
+            font-size: 0.7rem;
+            opacity: 0.6;
+        }
+
+        .table-header-cell.asc::after {
+            content: '↑';
+            opacity: 1;
+        }
+
+        .table-header-cell.desc::after {
+            content: '↓';
+            opacity: 1;
+        }
+
+        .table-body {
+            max-height: 65vh;
+            overflow-y: auto;
+        }
+
+        .table-body::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .table-body::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        .table-body::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 3px;
+        }
+
+        .table-row {
+            display: grid;
+            grid-template-columns: 200px 1fr 150px 180px;
+            gap: 1px;
+            border-bottom: 1px solid var(--border);
+            transition: all 0.3s ease;
+        }
+
+        .table-row:hover {
+            background: var(--bg-tertiary);
+            transform: translateX(4px);
+        }
+
+        .table-cell {
+            padding: 1.25rem 1rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            word-break: break-word;
+        }
+
+        .timestamp {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .file-path {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .file-name {
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+        }
+
+        .signature {
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border: 1px solid;
+        }
+
+        .signature-verified {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--success);
+            border-color: var(--success);
+        }
+
+        .signature-unsigned {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--warning);
+            border-color: var(--warning);
+        }
+
+        .signature-suspicious {
+            background: rgba(220, 38, 38, 0.2);
+            color: var(--suspicious);
+            border-color: var(--suspicious);
+        }
+
+        .signature-deleted {
+            background: rgba(100, 116, 139, 0.15);
+            color: var(--text-muted);
+            border-color: var(--text-muted);
+        }
+
+        .footer {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border);
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .footer-info {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+        }
+
+        .footer-link {
+            color: var(--accent-primary);
+            text-decoration: none;
+            font-size: 0.8rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+        }
+
+        .footer-link:hover {
+            color: var(--text-primary);
+            background: var(--accent-primary);
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 4rem;
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: var(--accent-primary);
+        }
+
+        @media (max-width: 1024px) {
+            .table-header-row,
+            .table-row {
+                grid-template-columns: 180px 1fr 140px 160px;
             }
         }
 
-        $Event.Graphics.DrawString(
-            $Event.SubItem.Text,
-            $ListView.Font,
-            (New-Object System.Drawing.SolidBrush(
-                $TextColor
-            )),
-            $Event.Bounds.X + 10,
-            $Event.Bounds.Y + 8
-        )
-    })
-
-    foreach ($Entry in $Bam) {
-
-        $Item =
-            New-Object System.Windows.Forms.ListViewItem(
-                [string]$Entry.'Execution Time'
-            )
-
-        [void]$Item.SubItems.Add(
-            [string]$Entry.'File Path'
-        )
-
-        [void]$Item.SubItems.Add(
-            [string]$Entry.'Signature Status'
-        )
-
-        [void]$Item.SubItems.Add(
-            [string]$Entry.'File Name'
-        )
-
-        $Item.Tag = $Entry
-
-        [void]$ListView.Items.Add($Item)
-    }
-
-    $Search.Add_TextChanged({
-
-        if (
-            $Search.Text -eq
-            "Search files, paths, timestamps, or signatures..."
-        ) {
-            return
-        }
-
-        $Query =
-            $Search.Text.Trim().ToLower()
-
-        $ListView.BeginUpdate()
-
-        $ListView.Items.Clear()
-
-        foreach ($Entry in $Bam) {
-
-            $SearchText = @(
-                $Entry.'Execution Time'
-                $Entry.'Execution UTC'
-                $Entry.'User Execution Time'
-                $Entry.'File Path'
-                $Entry.'Signature Status'
-                $Entry.'File Name'
-                $Entry.User
-                $Entry.SID
-            ) -join " "
-
-            if (
-                [string]::IsNullOrWhiteSpace($Query) -or
-                $SearchText.ToLower().Contains($Query)
-            ) {
-
-                $Item =
-                    New-Object System.Windows.Forms.ListViewItem(
-                        [string]$Entry.'Execution Time'
-                    )
-
-                [void]$Item.SubItems.Add(
-                    [string]$Entry.'File Path'
-                )
-
-                [void]$Item.SubItems.Add(
-                    [string]$Entry.'Signature Status'
-                )
-
-                [void]$Item.SubItems.Add(
-                    [string]$Entry.'File Name'
-                )
-
-                $Item.Tag = $Entry
-
-                [void]$ListView.Items.Add($Item)
+        @media (max-width: 768px) {
+            .table-header-row,
+            .table-row {
+                grid-template-columns: 150px 1fr 120px 140px;
+            }
+            
+            .container {
+                padding: 0 15px;
+            }
+            
+            .table-cell {
+                padding: 1rem 0.75rem;
+                font-size: 0.8rem;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .title {
+                font-size: 1.8rem;
             }
         }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="logo">.dP' dP"Yb.             `Yb.            db                                       
+dP'    `b   'Yb             `Yb        db    db             db                     
+                              Yb                                                   
+ 'Yb      'Yb   .dP'  dP'      Yb        'Yb    `Yb    dP' 'Yb .d888b.  `Yb.d888b  
+  88       88   88    88      dPYb        88      Yb  dP    88 8'   `Yb  88'    8Y 
+  88       88   Y8   .88    ,dP  Yb       88       YbdP     88 Yb.   88  88     8P 
+ .8P      .8P   `Y88P'88  .dP'    `Yb.   .8P       .8P     .8P     .dP   88   ,dP  
+                      88                         dP'  b          .dP'    88        
+                      88                         Y.  ,P        .dP'      88        
+                      Y8.                         `""'                  .8P        </div>
+            <h1 class="title">BAM Forensic Analysis</h1>
+            <p class="subtitle">Professional Execution Timeline Analysis • Made by @junchrist on Discord</p>
+        </div>
+    </div>
 
-        $ListView.EndUpdate()
-    })
+    <div class="stats-bar">
+        <div class="container">
+            <div class="stats-container">
+                <div class="stat-item">
+                    <div class="stat-value" id="totalEntries">0</div>
+                    <div class="stat-label">Total Entries</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="verifiedFiles">0</div>
+                    <div class="stat-label">Verified</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="suspiciousFiles">0</div>
+                    <div class="stat-label">Suspicious</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="unsignedFiles">0</div>
+                    <div class="stat-label">Unsigned</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="deletedFiles">0</div>
+                    <div class="stat-label">Deleted</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    $ListView.Add_DoubleClick({
+    <div class="controls">
+        <div class="container">
+            <div class="search-box">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                <input type="text" class="search-input" id="searchInput" placeholder="Search files, paths, timestamps, or signatures...">
+            </div>
+        </div>
+    </div>
 
-        if ($ListView.SelectedItems.Count -eq 0) {
-            return
-        }
+    <div class="table-section">
+        <div class="container">
+            <div class="data-table">
+                <div class="table-header">
+                    <div class="table-header-row">
+                        <div class="table-header-cell" data-sort="time">Execution Time</div>
+                        <div class="table-header-cell" data-sort="path">File Path</div>
+                        <div class="table-header-cell" data-sort="signature">Signature Status</div>
+                        <div class="table-header-cell" data-sort="fileName">File Name</div>
+                    </div>
+                </div>
+                <div class="table-body" id="tableBody">
+                    <div class="loading">Loading forensic data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        $Entry =
-            $ListView.SelectedItems[0].Tag
+    <div class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    © 2025 Forensic Analysis Tool • Made by @junchrist on Discord
+                </div>
+                <div class="footer-links">
+                    <a href="https://github.com/junchrist" class="footer-link" target="_blank">GitHub</a>
+                    <a href="https://discordapp.com/users/1357122264595693739" class="footer-link" target="_blank">Discord</a>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        $Details = @"
-Execution Time:
-$($Entry.'Execution Time')
+    <script>
+        const entries = [
+'@
 
-Execution UTC:
-$($Entry.'Execution UTC')
-
-User Execution Time:
-$($Entry.'User Execution Time')
-
-File Name:
-$($Entry.'File Name')
-
-File Path:
-$($Entry.'File Path')
-
-Signature Status:
-$($Entry.'Signature Status')
-
-User:
-$($Entry.User)
-
-SID:
-$($Entry.SID)
-
-Registry Path:
-$($Entry.'Registry Path')
+foreach ($entry in $Bam) {
+    $escapedTime = $entry.'Last Execution User Time'.Replace('"', '\"')
+    $escapedPath = $entry.Path.Replace('"', '\"')
+    $escapedSignature = $entry.'Digital Signature'.Replace('"', '\"')
+    $escapedFileName = $entry.'File Name'.Replace('"', '\"')
+    $ContenidoHtml += @"
+            {
+                time: `"$escapedTime`",
+                path: `"$escapedPath`",
+                signature: `"$escapedSignature`",
+                fileName: `"$escapedFileName`"
+            },
 "@
-
-        [System.Windows.Forms.MessageBox]::Show(
-            $Details,
-            "BAM Entry Details",
-            [System.Windows.Forms.MessageBoxButtons]::OK,
-            [System.Windows.Forms.MessageBoxIcon]::Information
-        ) | Out-Null
-    })
-
-    $Footer =
-        New-Object System.Windows.Forms.Label
-
-    $Footer.Text =
-        "BAM Forensic Analysis  •  TimeZone: $UserTime  •  Entries: $Total"
-
-    $Footer.Dock = "Bottom"
-
-    $Footer.Height = 28
-
-    $Footer.TextAlign =
-        [System.Drawing.ContentAlignment]::MiddleCenter
-
-    $Footer.Font =
-        New-Object System.Drawing.Font(
-            "Segoe UI",
-            8
-        )
-
-    $Footer.ForeColor =
-        [System.Drawing.Color]::FromArgb(
-            100, 116, 139
-        )
-
-    $Footer.BackColor =
-        [System.Drawing.Color]::FromArgb(
-            21, 21, 32
-        )
-
-    $Form.Controls.Add($Footer)
-
-    [void]$Form.ShowDialog()
 }
 
-Show-CustomGUI
+$ContenidoHtml += @'
+        ];
+
+        let currentSort = { column: "time", direction: "desc" };
+        let filteredEntries = [...entries];
+
+        function getSignatureClass(signature) {
+            if (signature === 'Verified') return 'signature-verified';
+            if (signature === 'Suspicious') return 'signature-suspicious';
+            if (signature === 'Unsigned') return 'signature-unsigned';
+            if (signature === 'Deleted') return 'signature-deleted';
+            return 'signature-unsigned';
+        }
+
+        function updateStats() {
+            const total = entries.length;
+            const verified = entries.filter(e => e.signature === 'Verified').length;
+            const suspicious = entries.filter(e => e.signature === 'Suspicious').length;
+            const unsigned = entries.filter(e => e.signature === 'Unsigned').length;
+            const deleted = entries.filter(e => e.signature === 'Deleted').length;
+
+            document.getElementById('totalEntries').textContent = total;
+            document.getElementById('verifiedFiles').textContent = verified;
+            document.getElementById('suspiciousFiles').textContent = suspicious;
+            document.getElementById('unsignedFiles').textContent = unsigned;
+            document.getElementById('deletedFiles').textContent = deleted;
+        }
+
+        function populateTable(data) {
+            const tbody = document.querySelector("#tableBody");
+            tbody.innerHTML = "";
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<div class="no-data">No entries match your search criteria</div>';
+                return;
+            }
+
+            data.forEach((entry, index) => {
+                const row = document.createElement("div");
+                row.className = "table-row";
+                row.innerHTML = `
+                    <div class="table-cell timestamp">${entry.time}</div>
+                    <div class="table-cell file-path">${entry.path}</div>
+                    <div class="table-cell">
+                        <span class="signature ${getSignatureClass(entry.signature)}">${entry.signature}</span>
+                    </div>
+                    <div class="table-cell file-name">${entry.fileName}</div>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function applyFilters() {
+            const searchTerm = document.getElementById("searchInput").value.toLowerCase();
+            
+            if (searchTerm) {
+                filteredEntries = entries.filter((entry) =>
+                    Object.values(entry).some((value) =>
+                        value.toLowerCase().includes(searchTerm)
+                    )
+                );
+            } else {
+                filteredEntries = [...entries];
+            }
+
+            filteredEntries.sort((a, b) => {
+                const aValue = a[currentSort.column];
+                const bValue = b[currentSort.column];
+                if (currentSort.direction === "asc") {
+                    return aValue.localeCompare(bValue);
+                } else {
+                    return bValue.localeCompare(aValue);
+                }
+            });
+
+            populateTable(filteredEntries);
+            updateSortIndicators();
+        }
+
+        function updateSortIndicators() {
+            document.querySelectorAll(".table-header-cell").forEach((th) => {
+                th.classList.remove("asc", "desc", "sorted");
+                if (th.dataset.sort === currentSort.column) {
+                    th.classList.add("sorted", currentSort.direction);
+                }
+            });
+        }
+
+        document.getElementById("searchInput").addEventListener("input", applyFilters);
+
+        document.querySelectorAll(".table-header-cell").forEach((th) => {
+            th.addEventListener("click", () => {
+                const column = th.dataset.sort;
+                if (currentSort.column === column) {
+                    currentSort.direction = currentSort.direction === "asc" ? "desc" : "asc";
+                } else {
+                    currentSort.column = column;
+                    currentSort.direction = "asc";
+                }
+                applyFilters();
+            });
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            applyFilters();
+        });
+    </script>
+</body>
+</html>
+'@
+
+$htmlFilePath = Join-Path $env:TEMP "BAM_Forensic_Analysis.html"
+$ContenidoHtml | Out-File -FilePath $htmlFilePath -Encoding UTF8
+
+Start-Process $htmlFilePath
