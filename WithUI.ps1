@@ -72,23 +72,23 @@ function Convert-DevicePathToDriveLetter {
     return $DevicePath
 }
 
-function Get-FileSignature {
+function Get-Signature {
+    [CmdletBinding()]
     param (
         [string]$FilePath
     )
-    if (Test-Path $FilePath) {
-        $signature = Get-AuthenticodeSignature -FilePath $FilePath
-        if ($signature.Status -eq 'Valid') {
-            if ($signature.SignerCertificate.Subject -like "*Manthe Industries, LLC*") {
-                return "Suspicious"
-            }
-            if ($signature.SignerCertificate.Subject -like "*Slinkware*") {
-                return "Suspicious"
-            } else {
-                return "Verified"
-            }
-        } else {
-            return "Unsigned"
+
+    $ErrorActionPreference = "SilentlyContinue"
+    
+    if (Test-Path -PathType "Leaf" -Path $FilePath) {
+        $Authenticode = (Get-AuthenticodeSignature -FilePath $FilePath -ErrorAction SilentlyContinue).Status
+        
+        switch ($Authenticode) {
+            "Valid" { return "Verified" }
+            "NotSigned" { return "Unsigned" }
+            "HashMismatch" { return "Invalid Signature (HashMismatch)" }
+            "NotTrusted" { return "Invalid Signature (NotTrusted)" }
+            default { return "Unsigned" }
         }
     } else {
         return "Deleted"
@@ -149,7 +149,7 @@ Foreach ($Sid in $Users) {
                     
                     $path = Convert-DevicePathToDriveLetter -DevicePath $item -DeviceMappings $deviceMappings
                     
-                    $signature = Get-FileSignature -FilePath $path
+                    $signature = Get-Signature -FilePath $path
                     
                     $Bam += [PSCustomObject]@{
                         'Last Execution User Time' = $TimeUser
