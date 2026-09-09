@@ -239,7 +239,7 @@ d8b_,dPd88   88 d8P' `P  88P `?8bd8P' ?88    88P'  `  88P ?8b,     88P
 `?888P'`?88P'?8b`?888P'd88'   88b`?88P'`88bd88'     d88' `?888P'   `?8b
             </TextBlock>
             <TextBlock FontSize="24" FontWeight="Bold" Margin="0,10,0,0">BAM Forensic Analysis</TextBlock>
-            <TextBlock FontSize="14" Foreground="#888888" Margin="0,5,0,0">Professional Execution Timeline Analysis • Made by @junchrist on Discord</TextBlock>
+            <TextBlock FontSize="14" Foreground="#888888" Margin="0,5,0,0">Made by @junchrist on Discord</TextBlock>
         </StackPanel>
 
         <Grid Grid.Row="1" Margin="0,0,0,10">
